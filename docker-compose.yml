@@ -1,0 +1,8 @@
+services:
+  admin:
+    build: .
+    container_name: prisier-admin
+    ports:
+      - "3001:80"
+    environment:
+      - NODE_ENV=production
