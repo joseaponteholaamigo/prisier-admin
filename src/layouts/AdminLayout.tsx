@@ -22,7 +22,7 @@ export default function AdminLayout() {
         {/* Logo */}
         <div className="px-5 pt-6 pb-5">
           <div className="bg-white border border-p-border rounded-lg px-3 py-2 inline-block">
-            <img src="/logo.jpg" alt="Prisier" className="h-[36px] object-contain" />
+            <img src={`${import.meta.env.BASE_URL}logo.jpg`} alt="Prisier" className="h-[36px] object-contain" />
           </div>
         </div>
 

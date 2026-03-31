@@ -36,7 +36,7 @@ export default function LoginPage() {
       <div className="card p-8 w-full max-w-md shadow-lg">
         <div className="text-center mb-8">
           <div className="inline-block bg-white border border-p-border rounded-xl px-4 py-2 mb-4">
-            <img src="/logo.jpg" alt="Prisier" className="h-10 object-contain" />
+            <img src={`${import.meta.env.BASE_URL}logo.jpg`} alt="Prisier" className="h-10 object-contain" />
           </div>
           <p className="text-p-gray text-sm">Backoffice Administrativo</p>
         </div>
