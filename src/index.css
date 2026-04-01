@@ -21,7 +21,7 @@
 
   /* Cards */
   .card {
-    @apply bg-white rounded-xl border border-p-border shadow-sm;
+    @apply bg-white rounded-xl border border-p-border shadow-sm p-5;
   }
 
   /* Tables */
