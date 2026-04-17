@@ -47,10 +47,10 @@ function SaveBar({ onSave, saving, dirty }: { onSave: () => void; saving: boolea
   )
 }
 
-function SoloPricerBadge() {
+function SoloPrisierBadge() {
   return (
     <span className="badge" style={{ background: 'rgba(59,130,246,0.15)', color: '#60a5fa', border: '1px solid rgba(59,130,246,0.3)' }}>
-      <Lock size={10} className="mr-1" /> Solo Pricer
+      <Lock size={10} className="mr-1" /> Solo Prisier
     </span>
   )
 }
@@ -63,7 +63,7 @@ function ResumenTab({ tenantId }: { tenantId: string }) {
     queryFn: () => api.get<ReglaResumenItem[]>(`reglas/resumen?tenantId=${tenantId}`).then(r => r.data),
   })
 
-  const soloPricer = ['R-004', 'R-007']
+  const soloPrisier = ['R-004', 'R-007']
 
   if (isLoading) return <Spinner />
 
@@ -79,7 +79,7 @@ function ResumenTab({ tenantId }: { tenantId: string }) {
             <div>
               <div className="flex items-center gap-2">
                 <span className="text-sm font-semibold text-p-dark">{item.tipo}</span>
-                {soloPricer.includes(item.tipo) && <SoloPricerBadge />}
+                {soloPrisier.includes(item.tipo) && <SoloPrisierBadge />}
                 <span className={`badge ${item.configurada ? 'badge-green' : 'badge-yellow'}`}>
                   {item.configurada ? 'Configurada' : 'Pendiente'}
                 </span>
@@ -365,7 +365,7 @@ function ElasticidadTab({ tenantId }: { tenantId: string }) {
         <p className="text-sm text-p-gray flex-1">
           Coeficientes de elasticidad precio-demanda por SKU. Valores negativos indican relación inversa (precio sube → demanda baja).
         </p>
-        <SoloPricerBadge />
+        <SoloPrisierBadge />
       </div>
       <div className="card overflow-x-auto">
         <table className="data-table w-full">
@@ -561,7 +561,7 @@ function CanalesTab({ tenantId }: { tenantId: string }) {
         <p className="text-sm text-p-gray flex-1">
           Define el IVA nacional y los canales de distribución con sus márgenes. El precio al consumidor se calcula dividiendo el precio de lista por el margen del canal.
         </p>
-        <SoloPricerBadge />
+        <SoloPrisierBadge />
       </div>
 
       {/* IVA */}

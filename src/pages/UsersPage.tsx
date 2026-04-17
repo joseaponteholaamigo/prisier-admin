@@ -83,7 +83,7 @@ export default function UsersPage() {
   const rolLabel = (rol: string) => {
     const labels: Record<string, string> = {
       admin: 'Admin',
-      consultor_pricer: 'Consultor',
+      consultor_prisier: 'Consultor',
       cliente_comercial: 'Cliente Comercial',
       cliente_educacion: 'Cliente Educación',
     }
@@ -148,7 +148,7 @@ export default function UsersPage() {
                 <label className="form-label">Rol</label>
                 <select {...register('rol')} className="form-input">
                   {isAdmin && <option value="admin">Admin</option>}
-                  {isAdmin && <option value="consultor_pricer">Consultor Pricer</option>}
+                  {isAdmin && <option value="consultor_prisier">Consultor Prisier</option>}
                   <option value="cliente_comercial">Cliente Comercial</option>
                   <option value="cliente_educacion">Cliente Educación</option>
                 </select>

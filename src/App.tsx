@@ -16,11 +16,11 @@ const queryClient = new QueryClient({
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <BrowserRouter basename="/pricer-admin/">
+      <BrowserRouter basename="/prisier-admin/">
         <AuthProvider>
           <Routes>
             <Route path="/login" element={<LoginPage />} />
-            <Route element={<ProtectedRoute allowedRoles={['admin', 'consultor_pricer']} />}>
+            <Route element={<ProtectedRoute allowedRoles={['admin', 'consultor_prisier']} />}>
               <Route element={<AdminLayout />}>
                 <Route path="/" element={<DashboardPage />} />
                 <Route path="/tenants" element={<TenantsPage />} />

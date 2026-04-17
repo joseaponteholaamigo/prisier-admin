@@ -48,4 +48,4 @@ Sirve la app con nginx en el puerto `3001`.
 ## Roles con acceso
 
 - `admin` — gestion completa de la plataforma
-- `consultor_pricer` — gestion de tenants asignados y sus usuarios
+- `consultor_prisier` — gestion de tenants asignados y sus usuarios

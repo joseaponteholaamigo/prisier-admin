@@ -128,7 +128,7 @@ export const SEED_USERS: MockUser[] = [
     email: 'consultor@prisier.com',
     password: '123456',
     nombreCompleto: 'Consultor Demo',
-    rol: 'consultor_pricer',
+    rol: 'consultor_prisier',
     tenantId: null,
     estado: 'activo',
     invitadoPor: null,
