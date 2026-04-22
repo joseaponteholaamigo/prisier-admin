@@ -39,6 +39,9 @@ export interface MockSku {
   categoria: string
   marca: string
   tenantId: string
+  pvpSugerido: number
+  costoVariable: number
+  pesoProfitPool: number
 }
 
 export interface MockCompetidor {
@@ -48,40 +51,48 @@ export interface MockCompetidor {
   tenantId: string
 }
 
-export interface MockAtributo {
+// R-002 — Atributos por categoría
+export interface MockAtributoCategoria {
   nombre: string
   peso: number
-  calificacion: number
   orden: number
+  calificacion?: number
 }
 
-export interface MockCategoriaVP {
+export interface MockCategoriaAtributos {
   categoria: string
-  atributos: MockAtributo[]
+  atributos: MockAtributoCategoria[]
 }
 
+// R-002 — Calificaciones por SKU × atributo × {propio, competidor}
+export interface MockCalificacion {
+  skuId: string
+  atributo: string
+  calificacionPropia: number
+  calificacionesCompetidor: Record<string, number>
+}
+
+// R-004 — sin confianza ni R²
 export interface MockElasticidad {
   skuId: string
   coeficiente: number
-  confianza: number
-  r2: number
 }
 
+// R-005/R-006 — Config estructuras
 export interface MockColConfig {
-  ean: string
-  nombreProducto: string
-  costoVariableOPvp: string
-  fechaVigenciaOCanal: string
+  iva?: number
+  tipoEstructura?: string
 }
 
-export interface MockCanal {
+// R-007 — canales con margen simple
+export interface MockCanalSimple {
   nombre: string
   margen: number
 }
 
 export interface MockCanalesMargenes {
   iva: number
-  canales: MockCanal[]
+  canales: MockCanalSimple[]
 }
 
 export interface MockUmbrales {
@@ -89,9 +100,23 @@ export interface MockUmbrales {
   umbralInferior: number
 }
 
+// R-005/R-006 — Portafolio unificado (IVA + SKUs)
+export interface MockPortafolio {
+  iva: number
+}
+
+// R-009 — Peso profit pool por SKU
 export interface MockPesoItem {
   skuId: string
   peso: number
+}
+
+// R-010 — Retailers
+export interface MockRetailer {
+  id: string
+  nombre: string
+  activo: boolean
+  tenantId: string
 }
 
 // ─── Seed Tenants ─────────────────────────────────────────────────────────────
@@ -158,32 +183,53 @@ export const SEED_CONSULTOR_TENANTS: MockConsultorTenant[] = [
   },
 ]
 
-// ─── Seed SKUs ────────────────────────────────────────────────────────────────
+// ─── Seed SKUs (incluye PVP, costo, peso profit pool) ───────────────────────
 
 export const SEED_SKUS: MockSku[] = [
-  { id: 'sku-001', ean: '7701234000001', nombre: 'Energética 250ml', categoria: 'Bebidas Energéticas', marca: 'PowerUp', tenantId: 'tenant-001' },
-  { id: 'sku-002', ean: '7701234000002', nombre: 'Energética 500ml', categoria: 'Bebidas Energéticas', marca: 'PowerUp', tenantId: 'tenant-001' },
-  { id: 'sku-003', ean: '7701234000003', nombre: 'Energética 250ml Zero', categoria: 'Bebidas Energéticas', marca: 'PowerUp', tenantId: 'tenant-001' },
-  { id: 'sku-004', ean: '7701234000004', nombre: 'Energética 500ml Tropical', categoria: 'Bebidas Energéticas', marca: 'PowerUp', tenantId: 'tenant-001' },
-  { id: 'sku-005', ean: '7701234000005', nombre: 'Jugo Naranja 1L', categoria: 'Jugos', marca: 'FruttaViva', tenantId: 'tenant-001' },
-  { id: 'sku-006', ean: '7701234000006', nombre: 'Jugo Manzana 1L', categoria: 'Jugos', marca: 'FruttaViva', tenantId: 'tenant-001' },
-  { id: 'sku-007', ean: '7701234000007', nombre: 'Jugo Multifrutas 500ml', categoria: 'Jugos', marca: 'FruttaViva', tenantId: 'tenant-001' },
-  { id: 'sku-008', ean: '7701234000008', nombre: 'Agua Natural 600ml', categoria: 'Agua', marca: 'AquaPura', tenantId: 'tenant-001' },
-  { id: 'sku-009', ean: '7701234000009', nombre: 'Agua Natural 1.5L', categoria: 'Agua', marca: 'AquaPura', tenantId: 'tenant-001' },
-  { id: 'sku-010', ean: '7701234000010', nombre: 'Hidratante Limón 750ml', categoria: 'Hidratantes', marca: 'SportPro', tenantId: 'tenant-001' },
+  // Bebidas Energéticas — PowerUp
+  { id: 'sku-001', ean: '7701234000001', nombre: 'Energética 250ml',          categoria: 'Bebidas Energéticas', marca: 'PowerUp',    tenantId: 'tenant-001', pvpSugerido:  5500, costoVariable: 2200, pesoProfitPool: 0.04 },
+  { id: 'sku-002', ean: '7701234000002', nombre: 'Energética 500ml',          categoria: 'Bebidas Energéticas', marca: 'PowerUp',    tenantId: 'tenant-001', pvpSugerido:  9500, costoVariable: 3800, pesoProfitPool: 0.04 },
+  { id: 'sku-003', ean: '7701234000003', nombre: 'Energética 250ml Zero',     categoria: 'Bebidas Energéticas', marca: 'PowerUp',    tenantId: 'tenant-001', pvpSugerido:  5500, costoVariable: 2300, pesoProfitPool: 0.04 },
+  { id: 'sku-004', ean: '7701234000004', nombre: 'Energética 500ml Tropical', categoria: 'Bebidas Energéticas', marca: 'PowerUp',    tenantId: 'tenant-001', pvpSugerido:  9800, costoVariable: 3900, pesoProfitPool: 0.04 },
+  { id: 'sku-005', ean: '7701234000005', nombre: 'Energética 355ml Mora',     categoria: 'Bebidas Energéticas', marca: 'PowerUp',    tenantId: 'tenant-001', pvpSugerido:  6800, costoVariable: 2700, pesoProfitPool: 0.04 },
+  // Jugos — FruttaViva
+  { id: 'sku-006', ean: '7701234000006', nombre: 'Jugo Naranja 1L',           categoria: 'Jugos',               marca: 'FruttaViva', tenantId: 'tenant-001', pvpSugerido:  8200, costoVariable: 3400, pesoProfitPool: 0.04 },
+  { id: 'sku-007', ean: '7701234000007', nombre: 'Jugo Manzana 1L',           categoria: 'Jugos',               marca: 'FruttaViva', tenantId: 'tenant-001', pvpSugerido:  8200, costoVariable: 3500, pesoProfitPool: 0.04 },
+  { id: 'sku-008', ean: '7701234000008', nombre: 'Jugo Multifrutas 500ml',    categoria: 'Jugos',               marca: 'FruttaViva', tenantId: 'tenant-001', pvpSugerido:  4600, costoVariable: 1900, pesoProfitPool: 0.04 },
+  { id: 'sku-009', ean: '7701234000009', nombre: 'Jugo Uva 1L',               categoria: 'Jugos',               marca: 'FruttaViva', tenantId: 'tenant-001', pvpSugerido:  8500, costoVariable: 3600, pesoProfitPool: 0.04 },
+  { id: 'sku-010', ean: '7701234000010', nombre: 'Jugo Mango 500ml',          categoria: 'Jugos',               marca: 'FruttaViva', tenantId: 'tenant-001', pvpSugerido:  4800, costoVariable: 2000, pesoProfitPool: 0.04 },
+  // Agua — AquaPura
+  { id: 'sku-011', ean: '7701234000011', nombre: 'Agua Natural 300ml',        categoria: 'Agua',                marca: 'AquaPura',   tenantId: 'tenant-001', pvpSugerido:  1500, costoVariable:  500, pesoProfitPool: 0.04 },
+  { id: 'sku-012', ean: '7701234000012', nombre: 'Agua Natural 600ml',        categoria: 'Agua',                marca: 'AquaPura',   tenantId: 'tenant-001', pvpSugerido:  2200, costoVariable:  800, pesoProfitPool: 0.04 },
+  { id: 'sku-013', ean: '7701234000013', nombre: 'Agua Natural 1.5L',         categoria: 'Agua',                marca: 'AquaPura',   tenantId: 'tenant-001', pvpSugerido:  3800, costoVariable: 1400, pesoProfitPool: 0.04 },
+  { id: 'sku-014', ean: '7701234000014', nombre: 'Agua Saborizada Limón 600ml',categoria: 'Agua',               marca: 'AquaPura',   tenantId: 'tenant-001', pvpSugerido:  2800, costoVariable: 1100, pesoProfitPool: 0.04 },
+  { id: 'sku-015', ean: '7701234000015', nombre: 'Agua Saborizada Fresa 600ml',categoria: 'Agua',               marca: 'AquaPura',   tenantId: 'tenant-001', pvpSugerido:  2800, costoVariable: 1100, pesoProfitPool: 0.04 },
+  // Hidratantes — SportPro
+  { id: 'sku-016', ean: '7701234000016', nombre: 'Hidratante Limón 750ml',    categoria: 'Hidratantes',         marca: 'SportPro',   tenantId: 'tenant-001', pvpSugerido:  6500, costoVariable: 2800, pesoProfitPool: 0.04 },
+  { id: 'sku-017', ean: '7701234000017', nombre: 'Hidratante Naranja 750ml',  categoria: 'Hidratantes',         marca: 'SportPro',   tenantId: 'tenant-001', pvpSugerido:  6500, costoVariable: 2800, pesoProfitPool: 0.04 },
+  { id: 'sku-018', ean: '7701234000018', nombre: 'Hidratante Uva 500ml',      categoria: 'Hidratantes',         marca: 'SportPro',   tenantId: 'tenant-001', pvpSugerido:  4900, costoVariable: 2100, pesoProfitPool: 0.04 },
+  // Tés — TeaLeaf
+  { id: 'sku-019', ean: '7701234000019', nombre: 'Té Verde Limón 500ml',      categoria: 'Tés',                 marca: 'TeaLeaf',    tenantId: 'tenant-001', pvpSugerido:  3900, costoVariable: 1500, pesoProfitPool: 0.04 },
+  { id: 'sku-020', ean: '7701234000020', nombre: 'Té Negro Durazno 500ml',    categoria: 'Tés',                 marca: 'TeaLeaf',    tenantId: 'tenant-001', pvpSugerido:  3900, costoVariable: 1500, pesoProfitPool: 0.04 },
+  { id: 'sku-021', ean: '7701234000021', nombre: 'Té de Hierbas 500ml',       categoria: 'Tés',                 marca: 'TeaLeaf',    tenantId: 'tenant-001', pvpSugerido:  4200, costoVariable: 1700, pesoProfitPool: 0.04 },
+  // Gaseosas — FizzUp
+  { id: 'sku-022', ean: '7701234000022', nombre: 'Gaseosa Cola 350ml',        categoria: 'Gaseosas',            marca: 'FizzUp',     tenantId: 'tenant-001', pvpSugerido:  2500, costoVariable:  900, pesoProfitPool: 0.04 },
+  { id: 'sku-023', ean: '7701234000023', nombre: 'Gaseosa Cola 1.5L',         categoria: 'Gaseosas',            marca: 'FizzUp',     tenantId: 'tenant-001', pvpSugerido:  5200, costoVariable: 1800, pesoProfitPool: 0.04 },
+  { id: 'sku-024', ean: '7701234000024', nombre: 'Gaseosa Naranja 350ml',     categoria: 'Gaseosas',            marca: 'FizzUp',     tenantId: 'tenant-001', pvpSugerido:  2500, costoVariable:  900, pesoProfitPool: 0.04 },
+  { id: 'sku-025', ean: '7701234000025', nombre: 'Gaseosa Lima-Limón 1.5L',   categoria: 'Gaseosas',            marca: 'FizzUp',     tenantId: 'tenant-001', pvpSugerido:  5200, costoVariable: 1800, pesoProfitPool: 0.04 },
 ]
 
 // ─── Seed Competidores ────────────────────────────────────────────────────────
 
 export const SEED_COMPETIDORES: MockCompetidor[] = [
-  { id: 'comp-001', nombre: 'Red Bull', pais: 'Austria', tenantId: 'tenant-001' },
-  { id: 'comp-002', nombre: 'Monster Energy', pais: 'USA', tenantId: 'tenant-001' },
-  { id: 'comp-003', nombre: 'Speed', pais: 'Colombia', tenantId: 'tenant-001' },
-  { id: 'comp-004', nombre: 'Hit', pais: 'Colombia', tenantId: 'tenant-001' },
-  { id: 'comp-005', nombre: 'Tutti Frutti', pais: 'Colombia', tenantId: 'tenant-001' },
-  { id: 'comp-006', nombre: 'Cristal', pais: 'Colombia', tenantId: 'tenant-001' },
-  { id: 'comp-007', nombre: 'Brisa', pais: 'Colombia', tenantId: 'tenant-001' },
-  { id: 'comp-008', nombre: 'Gatorade', pais: 'USA', tenantId: 'tenant-001' },
+  { id: 'comp-001', nombre: 'Red Bull',       pais: 'Austria',  tenantId: 'tenant-001' },
+  { id: 'comp-002', nombre: 'Monster Energy', pais: 'USA',      tenantId: 'tenant-001' },
+  { id: 'comp-003', nombre: 'Speed',          pais: 'Colombia', tenantId: 'tenant-001' },
+  { id: 'comp-004', nombre: 'Hit',            pais: 'Colombia', tenantId: 'tenant-001' },
+  { id: 'comp-005', nombre: 'Tutti Frutti',   pais: 'Colombia', tenantId: 'tenant-001' },
+  { id: 'comp-006', nombre: 'Cristal',        pais: 'Colombia', tenantId: 'tenant-001' },
+  { id: 'comp-007', nombre: 'Brisa',          pais: 'Colombia', tenantId: 'tenant-001' },
+  { id: 'comp-008', nombre: 'Gatorade',       pais: 'USA',      tenantId: 'tenant-001' },
 ]
 
 // ─── Seed R-001: Mapeo competidores ──────────────────────────────────────────
@@ -202,85 +248,120 @@ export const SEED_R001: Record<string, string[]> = {
   'sku-010': ['comp-008'],
 }
 
-// ─── Seed R-002/R-003: Valor percibido ───────────────────────────────────────
+// ─── Seed R-002a: Atributos por categoría (sin calificaciones) ───────────────
 
-export const SEED_R002: MockCategoriaVP[] = [
+export const SEED_R002_ATRIBUTOS: MockCategoriaAtributos[] = [
   {
     categoria: 'Bebidas Energéticas',
     atributos: [
-      { nombre: 'Sabor', peso: 0.30, calificacion: 4, orden: 1 },
-      { nombre: 'Precio', peso: 0.25, calificacion: 3, orden: 2 },
-      { nombre: 'Empaque', peso: 0.20, calificacion: 4, orden: 3 },
-      { nombre: 'Disponibilidad', peso: 0.15, calificacion: 5, orden: 4 },
-      { nombre: 'Marca', peso: 0.10, calificacion: 4, orden: 5 },
+      { nombre: 'Sabor',           peso: 0.3000000000, orden: 1, calificacion: 4.0 },
+      { nombre: 'Precio',          peso: 0.2500000000, orden: 2, calificacion: 4.0 },
+      { nombre: 'Empaque',         peso: 0.2000000000, orden: 3, calificacion: 4.0 },
+      { nombre: 'Disponibilidad',  peso: 0.1500000000, orden: 4, calificacion: 4.0 },
+      { nombre: 'Marca',           peso: 0.1000000000, orden: 5, calificacion: 4.0 },
     ],
   },
   {
     categoria: 'Jugos',
     atributos: [
-      { nombre: 'Sabor', peso: 0.35, calificacion: 4, orden: 1 },
-      { nombre: 'Contenido de fruta', peso: 0.25, calificacion: 3, orden: 2 },
-      { nombre: 'Precio', peso: 0.20, calificacion: 4, orden: 3 },
-      { nombre: 'Empaque', peso: 0.12, calificacion: 3, orden: 4 },
-      { nombre: 'Disponibilidad', peso: 0.08, calificacion: 5, orden: 5 },
+      { nombre: 'Sabor',              peso: 0.3500000000, orden: 1, calificacion: 4.0 },
+      { nombre: 'Contenido de fruta', peso: 0.2500000000, orden: 2, calificacion: 4.0 },
+      { nombre: 'Precio',             peso: 0.2000000000, orden: 3, calificacion: 4.0 },
+      { nombre: 'Empaque',            peso: 0.1200000000, orden: 4, calificacion: 4.0 },
+      { nombre: 'Disponibilidad',     peso: 0.0800000000, orden: 5, calificacion: 4.0 },
     ],
   },
   {
     categoria: 'Agua',
     atributos: [
-      { nombre: 'Precio', peso: 0.40, calificacion: 4, orden: 1 },
-      { nombre: 'Disponibilidad', peso: 0.30, calificacion: 5, orden: 2 },
-      { nombre: 'Empaque', peso: 0.15, calificacion: 3, orden: 3 },
-      { nombre: 'Pureza', peso: 0.10, calificacion: 4, orden: 4 },
-      { nombre: 'Marca', peso: 0.05, calificacion: 3, orden: 5 },
+      { nombre: 'Precio',          peso: 0.4000000000, orden: 1, calificacion: 4.0 },
+      { nombre: 'Disponibilidad',  peso: 0.3000000000, orden: 2, calificacion: 4.0 },
+      { nombre: 'Empaque',         peso: 0.1500000000, orden: 3, calificacion: 4.0 },
+      { nombre: 'Pureza',          peso: 0.1000000000, orden: 4, calificacion: 4.0 },
+      { nombre: 'Marca',           peso: 0.0500000000, orden: 5, calificacion: 4.0 },
     ],
   },
   {
     categoria: 'Hidratantes',
     atributos: [
-      { nombre: 'Sabor', peso: 0.30, calificacion: 4, orden: 1 },
-      { nombre: 'Precio', peso: 0.25, calificacion: 3, orden: 2 },
-      { nombre: 'Electrolitos', peso: 0.25, calificacion: 4, orden: 3 },
-      { nombre: 'Disponibilidad', peso: 0.12, calificacion: 4, orden: 4 },
-      { nombre: 'Marca', peso: 0.08, calificacion: 5, orden: 5 },
+      { nombre: 'Sabor',           peso: 0.3000000000, orden: 1, calificacion: 4.0 },
+      { nombre: 'Precio',          peso: 0.2500000000, orden: 2, calificacion: 4.0 },
+      { nombre: 'Electrolitos',    peso: 0.2500000000, orden: 3, calificacion: 4.0 },
+      { nombre: 'Disponibilidad',  peso: 0.1200000000, orden: 4, calificacion: 4.0 },
+      { nombre: 'Marca',           peso: 0.0800000000, orden: 5, calificacion: 4.0 },
+    ],
+  },
+  {
+    categoria: 'Tés',
+    atributos: [
+      { nombre: 'Sabor',           peso: 0.3500000000, orden: 1, calificacion: 4.0 },
+      { nombre: 'Precio',          peso: 0.2500000000, orden: 2, calificacion: 4.0 },
+      { nombre: 'Variedad',        peso: 0.1500000000, orden: 3, calificacion: 4.0 },
+      { nombre: 'Empaque',         peso: 0.1500000000, orden: 4, calificacion: 4.0 },
+      { nombre: 'Disponibilidad',  peso: 0.1000000000, orden: 5, calificacion: 4.0 },
+    ],
+  },
+  {
+    categoria: 'Gaseosas',
+    atributos: [
+      { nombre: 'Sabor',           peso: 0.3000000000, orden: 1, calificacion: 4.0 },
+      { nombre: 'Precio',          peso: 0.3000000000, orden: 2, calificacion: 4.0 },
+      { nombre: 'Disponibilidad',  peso: 0.2000000000, orden: 3, calificacion: 4.0 },
+      { nombre: 'Empaque',         peso: 0.1000000000, orden: 4, calificacion: 4.0 },
+      { nombre: 'Marca',           peso: 0.1000000000, orden: 5, calificacion: 4.0 },
     ],
   },
 ]
 
-// ─── Seed R-004: Elasticidades ────────────────────────────────────────────────
+// ─── Seed R-002b: Calificaciones por SKU × atributo × {propio, competidor} ───
+
+function buildDefaultCalificaciones(): MockCalificacion[] {
+  const out: MockCalificacion[] = []
+  for (const sku of SEED_SKUS) {
+    const catAttrs = SEED_R002_ATRIBUTOS.find(c => c.categoria === sku.categoria)
+    if (!catAttrs) continue
+    const competidoresAsignados = SEED_R001[sku.id] ?? []
+    for (const atr of catAttrs.atributos) {
+      const califsComp: Record<string, number> = {}
+      for (const compId of competidoresAsignados) {
+        // semilla simple: valores en [3.0, 4.5] con 2 decimales
+        califsComp[compId] = Math.round((3 + Math.random() * 1.5) * 100) / 100
+      }
+      out.push({
+        skuId: sku.id,
+        atributo: atr.nombre,
+        calificacionPropia: Math.round((3.5 + Math.random() * 1.2) * 100) / 100,
+        calificacionesCompetidor: califsComp,
+      })
+    }
+  }
+  return out
+}
+
+export const SEED_R002_CALIFICACIONES: MockCalificacion[] = buildDefaultCalificaciones()
+
+// ─── Seed R-004: Elasticidades (sin confianza, sin R²) ────────────────────────
 
 export const SEED_R004: MockElasticidad[] = [
-  { skuId: 'sku-001', coeficiente: -1.82, confianza: 0.92, r2: 0.87 },
-  { skuId: 'sku-002', coeficiente: -1.65, confianza: 0.89, r2: 0.84 },
-  { skuId: 'sku-003', coeficiente: -1.45, confianza: 0.85, r2: 0.79 },
-  { skuId: 'sku-004', coeficiente: -1.78, confianza: 0.91, r2: 0.86 },
-  { skuId: 'sku-005', coeficiente: -2.10, confianza: 0.94, r2: 0.91 },
-  { skuId: 'sku-006', coeficiente: -2.05, confianza: 0.93, r2: 0.90 },
-  { skuId: 'sku-007', coeficiente: -1.95, confianza: 0.88, r2: 0.83 },
-  { skuId: 'sku-008', coeficiente: -2.45, confianza: 0.96, r2: 0.94 },
-  { skuId: 'sku-009', coeficiente: -2.38, confianza: 0.95, r2: 0.92 },
-  { skuId: 'sku-010', coeficiente: -1.55, confianza: 0.87, r2: 0.81 },
+  { skuId: 'sku-001', coeficiente: -1.82 },
+  { skuId: 'sku-002', coeficiente: -1.65 },
+  { skuId: 'sku-003', coeficiente: -1.45 },
+  { skuId: 'sku-004', coeficiente: -1.78 },
+  { skuId: 'sku-005', coeficiente: -2.10 },
+  { skuId: 'sku-006', coeficiente: -2.05 },
+  { skuId: 'sku-007', coeficiente: -1.95 },
+  { skuId: 'sku-008', coeficiente: -0.85 },
+  { skuId: 'sku-009', coeficiente: -0.78 },
+  { skuId: 'sku-010', coeficiente: -1.55 },
 ]
 
-// ─── Seed R-005: Config columnas costos ──────────────────────────────────────
+// ─── Seed R-005/R-006: Portafolio (IVA) ──────────────────────────────────────
 
-export const SEED_R005: MockColConfig = {
-  ean: 'A',
-  nombreProducto: 'B',
-  costoVariableOPvp: 'C',
-  fechaVigenciaOCanal: 'D',
+export const SEED_PORTAFOLIO: MockPortafolio = {
+  iva: 0.19,
 }
 
-// ─── Seed R-006: Config columnas SKUs/PVP ────────────────────────────────────
-
-export const SEED_R006: MockColConfig = {
-  ean: 'A',
-  nombreProducto: 'B',
-  costoVariableOPvp: 'C',
-  fechaVigenciaOCanal: 'D',
-}
-
-// ─── Seed R-007: Canales y márgenes ──────────────────────────────────────────
+// ─── Seed R-007: Canales × Categorías (sin IVA) ──────────────────────────────
 
 export const SEED_R007: MockCanalesMargenes = {
   iva: 0.19,
@@ -298,7 +379,78 @@ export const SEED_R008: MockUmbrales = {
   umbralInferior: 0.05,
 }
 
-// ─── Seed R-009: Pesos profit pool ───────────────────────────────────────────
+// ─── Seed R-010: Retailers ───────────────────────────────────────────────────
+
+export const SEED_R010: MockRetailer[] = [
+  { id: 'ret-001', nombre: 'Éxito',     activo: true,  tenantId: 'tenant-001' },
+  { id: 'ret-002', nombre: 'Carulla',   activo: true,  tenantId: 'tenant-001' },
+  { id: 'ret-003', nombre: 'Olímpica',  activo: true,  tenantId: 'tenant-001' },
+  { id: 'ret-004', nombre: 'D1',        activo: true,  tenantId: 'tenant-001' },
+  { id: 'ret-005', nombre: 'Ara',       activo: true,  tenantId: 'tenant-001' },
+  { id: 'ret-006', nombre: 'Jumbo',     activo: true,  tenantId: 'tenant-001' },
+  { id: 'ret-007', nombre: 'Makro',     activo: false, tenantId: 'tenant-001' },
+]
+
+// ─── Seed R-005: Config estructura costos ───────────────────────────────────
+
+export const SEED_R005: MockColConfig = {
+  iva: 0.19,
+  tipoEstructura: 'costo_variable',
+}
+
+// ─── Seed R-006: Config estructura SKUs/PVP ────────────────────────────────
+
+export const SEED_R006: MockColConfig = {
+  iva: 0.19,
+  tipoEstructura: 'pvp_sugerido',
+}
+
+// ─── Importaciones de portafolio ─────────────────────────────────────────────
+
+export interface MockImportRecord {
+  id: string
+  fecha: string
+  archivo: string
+  totalSkus: number
+  advertencias: number
+  errores: string[]
+  estado: 'exitoso' | 'con_advertencias' | 'fallido'
+}
+
+export const SEED_IMPORTACIONES: MockImportRecord[] = [
+  {
+    id: 'imp-001',
+    fecha: new Date(Date.now() - 30 * 86400_000).toISOString(),
+    archivo: 'portafolio-congrupo-v1.xlsx',
+    totalSkus: 20,
+    advertencias: 0,
+    errores: [],
+    estado: 'exitoso',
+  },
+  {
+    id: 'imp-002',
+    fecha: new Date(Date.now() - 15 * 86400_000).toISOString(),
+    archivo: 'portafolio-congrupo-v2.xlsx',
+    totalSkus: 23,
+    advertencias: 2,
+    errores: [
+      'Fila 8: Peso Profit Pool fuera de rango (1.5%) — se normalizó a 1.0%',
+      'Fila 15: Categoría "Bebidas Deportivas" no reconocida — asignada a Hidratantes',
+    ],
+    estado: 'con_advertencias',
+  },
+  {
+    id: 'imp-003',
+    fecha: new Date(Date.now() - 3 * 86400_000).toISOString(),
+    archivo: 'portafolio-congrupo-oct2025.xlsx',
+    totalSkus: 25,
+    advertencias: 0,
+    errores: [],
+    estado: 'exitoso',
+  },
+]
+
+// ─── Seed R-009: Peso profit pool por SKU ───────────────────────────────────
 
 export const SEED_R009: MockPesoItem[] = [
   { skuId: 'sku-001', peso: 0.15 },

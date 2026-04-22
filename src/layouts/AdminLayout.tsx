@@ -1,5 +1,5 @@
 import { Outlet, NavLink, useLocation } from 'react-router-dom'
-import { LayoutDashboard, Users, Building2, Settings, FileText, LogOut, Search } from 'lucide-react'
+import { LayoutDashboard, Users, Building2, Settings, FileText, LogOut, Search, Database } from 'lucide-react'
 import { useAuth } from '../lib/auth'
 
 const navItems = [
@@ -7,6 +7,7 @@ const navItems = [
   { label: 'Tenants', icon: Building2, path: '/tenants' },
   { label: 'Usuarios', icon: Users, path: '/usuarios' },
   { label: 'Reglas', icon: Settings, path: '/reglas' },
+  { label: 'Scraper', icon: Database, path: '/scraper' },
   { label: 'Auditoría', icon: FileText, path: '/auditoria' },
 ]
 

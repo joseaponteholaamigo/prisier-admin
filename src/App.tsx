@@ -8,6 +8,8 @@ import DashboardPage from './pages/DashboardPage'
 import TenantsPage from './pages/TenantsPage'
 import UsersPage from './pages/UsersPage'
 import ReglesPage from './pages/ReglesPage'
+import MonitoreoScraperPage from './pages/MonitoreoScraperPage'
+import AuditLogsPage from './pages/AuditLogsPage'
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { staleTime: 30_000 } },
@@ -26,6 +28,8 @@ function App() {
                 <Route path="/tenants" element={<TenantsPage />} />
                 <Route path="/usuarios" element={<UsersPage />} />
                 <Route path="/reglas" element={<ReglesPage />} />
+                <Route path="/scraper" element={<MonitoreoScraperPage />} />
+                <Route path="/auditoria" element={<AuditLogsPage />} />
               </Route>
             </Route>
           </Routes>

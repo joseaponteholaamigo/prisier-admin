@@ -3,8 +3,8 @@ import { store } from './store'
 import { SEED_USERS } from './data'
 
 // ─── Utilidades ──────────────────────────────────────────────────────────────
-function ok<T>(data: T): Promise<{ data: T }> {
-  return Promise.resolve({ data })
+function ok<T>(data: T, headers: Record<string, string> = {}): Promise<{ data: T; headers: Record<string, string> }> {
+  return Promise.resolve({ data, headers })
 }
 
 function parseUrl(url: string): { path: string; params: URLSearchParams } {
@@ -206,24 +206,26 @@ function handleUsers(method: string, path: string, body: unknown) {
 }
 
 // ─── Reglas ───────────────────────────────────────────────────────────────────
-function handleReglas(method: string, path: string, body: unknown) {
+function handleReglas(method: string, path: string, body: unknown, params: URLSearchParams = new URLSearchParams()) {
   // GET reglas/resumen
   if (method === 'GET' && path === 'reglas/resumen') {
-    const r001Ok = Object.values(store.r001).some(v => v.length > 0)
-    const r002Ok = store.r002.length > 0
-    const r004Ok = store.r004.length > 0
-    const r007Ok = store.r007.canales.length > 0
-    const r008Ok = store.r008.umbralSuperior > 0
-    const r009Ok = store.r009.length > 0
+    const portafolioOk = store.skus.length > 0
+    const importacionesOk = store.importaciones.length > 0
+    const atributosOk = store.r002.length > 0
+    const calificacionesOk = store.r002_calificaciones.length > 0
+    const elasticidadOk = store.r004.length > 0
+    const canalesOk = store.r007.canales.length > 0
+    const umbralesOk = store.r008.umbralSuperior > 0
+    const retailersOk = store.r010.length > 0
     return ok([
-      { tipo: 'R-001', descripcion: 'Mapeo de competidores', configurada: r001Ok, actualizadaEn: '2025-11-15T10:30:00Z', actualizadaPor: 'Consultor Demo' },
-      { tipo: 'R-002', descripcion: 'Valor percibido por categoría', configurada: r002Ok, actualizadaEn: '2025-11-20T14:00:00Z', actualizadaPor: 'Consultor Demo' },
-      { tipo: 'R-004', descripcion: 'Coeficientes de elasticidad', configurada: r004Ok, actualizadaEn: '2025-11-18T09:00:00Z', actualizadaPor: 'Admin Prisier' },
-      { tipo: 'R-005', descripcion: 'Estructura archivo costos', configurada: true, actualizadaEn: '2025-11-10T08:00:00Z', actualizadaPor: 'Admin Prisier' },
-      { tipo: 'R-006', descripcion: 'Estructura archivo SKUs/PVP', configurada: true, actualizadaEn: '2025-11-10T08:00:00Z', actualizadaPor: 'Admin Prisier' },
-      { tipo: 'R-007', descripcion: 'Canales y márgenes', configurada: r007Ok, actualizadaEn: '2025-11-22T16:00:00Z', actualizadaPor: 'Admin Prisier' },
-      { tipo: 'R-008', descripcion: 'Umbrales de alerta', configurada: r008Ok, actualizadaEn: '2025-11-22T16:00:00Z', actualizadaPor: 'Consultor Demo' },
-      { tipo: 'R-009', descripcion: 'Peso importancia económica', configurada: r009Ok, actualizadaEn: '2025-11-19T11:00:00Z', actualizadaPor: 'Consultor Demo' },
+      { tipo: 'Portafolio',      descripcion: 'SKUs y precios del portafolio',          configurada: portafolioOk,    actualizadaEn: '2025-11-10T08:00:00Z', actualizadaPor: 'Admin Prisier' },
+      { tipo: 'Importaciones',   descripcion: 'Historial de cargas de portafolio',       configurada: importacionesOk, actualizadaEn: '2025-11-12T09:00:00Z', actualizadaPor: 'Admin Prisier' },
+      { tipo: 'Atributos',       descripcion: 'Atributos de valor percibido',            configurada: atributosOk,     actualizadaEn: '2025-11-20T14:00:00Z', actualizadaPor: 'Consultor Demo' },
+      { tipo: 'Calificaciones',  descripcion: 'Calificaciones por SKU y competidor',     configurada: calificacionesOk, actualizadaEn: '2025-11-21T10:00:00Z', actualizadaPor: 'Consultor Demo' },
+      { tipo: 'Elasticidad',     descripcion: 'Coeficientes de elasticidad por SKU',     configurada: elasticidadOk,   actualizadaEn: '2025-11-18T09:00:00Z', actualizadaPor: 'Admin Prisier' },
+      { tipo: 'Canales',         descripcion: 'Canales de venta y márgenes',             configurada: canalesOk,       actualizadaEn: '2025-11-22T16:00:00Z', actualizadaPor: 'Admin Prisier' },
+      { tipo: 'Umbrales',        descripcion: 'Umbrales de alerta de precios',           configurada: umbralesOk,      actualizadaEn: '2025-11-22T16:00:00Z', actualizadaPor: 'Consultor Demo' },
+      { tipo: 'Retailers',       descripcion: 'Retailers activos del tenant',            configurada: retailersOk,     actualizadaEn: '2025-11-19T11:00:00Z', actualizadaPor: 'Consultor Demo' },
     ])
   }
 
@@ -243,12 +245,29 @@ function handleReglas(method: string, path: string, body: unknown) {
     return ok({ mapeo: store.r001 })
   }
 
+  // GET reglas/atributos
+  if (method === 'GET' && path === 'reglas/atributos') {
+    return ok(store.r002.map(cat => ({
+      categoria: cat.categoria,
+      atributos: cat.atributos,
+    })))
+  }
+
+  // PUT reglas/atributos
+  if (method === 'PUT' && path === 'reglas/atributos') {
+    const { categoria, atributos } = body as { categoria: string; atributos: typeof store.r002[0]['atributos'] }
+    const idx = store.r002.findIndex(c => c.categoria === categoria)
+    if (idx === -1) store.r002.push({ categoria, atributos })
+    else store.r002[idx].atributos = atributos
+    return ok({ categoria, atributos })
+  }
+
   // GET reglas/valor-percibido
   if (method === 'GET' && path === 'reglas/valor-percibido') {
     return ok(store.r002.map(cat => ({
       categoria: cat.categoria,
       atributos: cat.atributos,
-      vp: Math.round(cat.atributos.reduce((acc, a) => acc + a.peso * a.calificacion, 0) * 100) / 100,
+      vp: Math.round(cat.atributos.reduce((acc, a) => acc + a.peso * (a.calificacion ?? 0), 0) * 100) / 100,
     })))
   }
 
@@ -265,7 +284,7 @@ function handleReglas(method: string, path: string, body: unknown) {
     return ok({
       categoria,
       atributos: cat.atributos,
-      vp: Math.round(cat.atributos.reduce((acc, a) => acc + a.peso * a.calificacion, 0) * 100) / 100,
+      vp: Math.round(cat.atributos.reduce((acc, a) => acc + a.peso * (a.calificacion ?? 0), 0) * 100) / 100,
     })
   }
 
@@ -342,29 +361,351 @@ function handleReglas(method: string, path: string, body: unknown) {
     return ok(store.r009)
   }
 
+  // GET reglas/calificaciones
+  if (method === 'GET' && path === 'reglas/calificaciones') {
+    const skuId = params.get('skuId')
+    if (!skuId) return Promise.reject({ response: { status: 400 } })
+    const sku = store.skus.find(s => s.id === skuId)
+    if (!sku) return Promise.reject({ response: { status: 404 } })
+    const catAttrs = store.r002.find(c => c.categoria === sku.categoria)
+    if (!catAttrs) return ok(null)
+    const competidoresDelSku = store.r001[skuId] ?? []
+    const atributos = catAttrs.atributos.map(a => {
+      const calRow = store.r002_calificaciones.find(c => c.skuId === skuId && c.atributo === a.nombre)
+      const calComp: Record<string, number> = {}
+      for (const compId of competidoresDelSku) {
+        calComp[compId] = calRow?.calificacionesCompetidor[compId] ?? 0
+      }
+      return {
+        nombre: a.nombre,
+        peso: a.peso,
+        calificacionPropia: calRow?.calificacionPropia ?? 0,
+        calificacionesCompetidor: calComp,
+      }
+    })
+    const vpPropio = atributos.reduce((s, a) => s + a.peso * a.calificacionPropia, 0)
+    const vpCompetidor: Record<string, number> = {}
+    for (const compId of competidoresDelSku) {
+      vpCompetidor[compId] = atributos.reduce((s, a) => s + a.peso * (a.calificacionesCompetidor[compId] ?? 0), 0)
+    }
+    return ok({ skuId, skuNombre: sku.nombre, categoria: sku.categoria, atributos, vpPropio, vpCompetidor })
+  }
+
+  // PUT reglas/calificaciones
+  if (method === 'PUT' && path === 'reglas/calificaciones') {
+    const { skuId, modo, competidorId, calificaciones } = body as {
+      skuId: string; modo: 'propio' | 'competidor'; competidorId: string | null
+      calificaciones: Record<string, number>
+    }
+    for (const [atributo, valor] of Object.entries(calificaciones)) {
+      const idx = store.r002_calificaciones.findIndex(c => c.skuId === skuId && c.atributo === atributo)
+      if (idx === -1) {
+        store.r002_calificaciones.push({
+          skuId, atributo,
+          calificacionPropia: modo === 'propio' ? valor : 0,
+          calificacionesCompetidor: modo === 'competidor' && competidorId ? { [competidorId]: valor } : {},
+        })
+      } else {
+        if (modo === 'propio') {
+          store.r002_calificaciones[idx].calificacionPropia = valor
+        } else if (competidorId) {
+          store.r002_calificaciones[idx].calificacionesCompetidor = {
+            ...store.r002_calificaciones[idx].calificacionesCompetidor,
+            [competidorId]: valor,
+          }
+        }
+      }
+    }
+    return ok({ ok: true })
+  }
+
+  // GET reglas/portafolio/importaciones
+  if (method === 'GET' && path === 'reglas/portafolio/importaciones') {
+    return ok([...store.importaciones].reverse())
+  }
+
+  // GET reglas/portafolio/plantilla — descarga template xlsx estático
+  if (method === 'GET' && path === 'reglas/portafolio/plantilla') {
+    return fetch('/prisier-admin/plantillas/plantilla-portafolio.xlsx')
+      .then(r => r.blob())
+      .then(blob => ({ data: blob })) as ReturnType<typeof ok>
+  }
+
+  // GET reglas/portafolio
+  if (method === 'GET' && path === 'reglas/portafolio') {
+    return ok({
+      iva: store.portafolio.iva,
+      items: store.skus.map(s => ({
+        skuId: s.id,
+        ean: s.ean,
+        nombre: s.nombre,
+        marca: s.marca,
+        categoria: s.categoria,
+        pvpSugerido: s.pvpSugerido,
+        costoVariable: s.costoVariable,
+        pesoProfitPool: s.pesoProfitPool,
+      })),
+    })
+  }
+
+  // PUT reglas/portafolio
+  if (method === 'PUT' && path === 'reglas/portafolio') {
+    const { iva, items } = body as { iva: number; items: Array<{ skuId: string; pvpSugerido: number; costoVariable: number; pesoProfitPool: number }> }
+    store.portafolio.iva = iva
+    items.forEach(item => {
+      const sku = store.skus.find(s => s.id === item.skuId)
+      if (sku) {
+        sku.pvpSugerido = item.pvpSugerido
+        sku.costoVariable = item.costoVariable
+        sku.pesoProfitPool = item.pesoProfitPool
+      }
+    })
+    return ok({ iva: store.portafolio.iva, items })
+  }
+
+  // POST reglas/portafolio/upload — simula parsing de xlsx y registra historial
+  if (method === 'POST' && path === 'reglas/portafolio/upload') {
+    const items = store.skus.map(s => ({
+      skuId: s.id, ean: s.ean, nombre: s.nombre, marca: s.marca,
+      categoria: s.categoria, pvpSugerido: s.pvpSugerido,
+      costoVariable: s.costoVariable, pesoProfitPool: s.pesoProfitPool,
+    }))
+    const record = {
+      id: newId(),
+      fecha: new Date().toISOString(),
+      archivo: 'portafolio.xlsx',
+      totalSkus: items.length,
+      advertencias: 0,
+      errores: [] as string[],
+      estado: 'exitoso' as const,
+    }
+    store.importaciones.push(record)
+    return ok({ items, totalProcesados: items.length, errores: [], importacionId: record.id })
+  }
+
+  // GET reglas/retailers
+  if (method === 'GET' && path === 'reglas/retailers') {
+    const tenantId = params.get('tenantId')
+    const retailers = store.r010
+      .filter(r => !tenantId || r.tenantId === tenantId)
+      .map(({ id, nombre, activo }) => ({ id, nombre, activo }))
+    return ok(retailers)
+  }
+
+  // PUT reglas/retailers
+  if (method === 'PUT' && path === 'reglas/retailers') {
+    const tenantId = params.get('tenantId')
+    const items = body as Array<{ id: string; nombre: string; activo: boolean }>
+    store.r010 = store.r010.filter(r => r.tenantId !== tenantId)
+    items.forEach(item => store.r010.push({ ...item, tenantId: tenantId ?? '' }))
+    return ok(items)
+  }
+
+  return null
+}
+
+// ─── Audit Logs ───────────────────────────────────────────────────────────────
+
+const MOCK_AUDIT_LOGS = (() => {
+  const users = [
+    { nombre: 'Admin Prisier', tenantId: 'tenant-001', tenantNombre: 'ConGrupo', ip: '192.168.1.1' },
+    { nombre: 'Consultor Demo', tenantId: 'tenant-001', tenantNombre: 'ConGrupo', ip: '10.0.0.5' },
+    { nombre: 'Cliente ConGrupo', tenantId: 'tenant-001', tenantNombre: 'ConGrupo', ip: '201.244.12.8' },
+  ]
+  const combos: Array<[string, string, string | null, string | null]> = [
+    ['login', 'sesion', null, null],
+    ['cambio_regla', 'regla', '{"umbral": 0.05}', '{"umbral": 0.10}'],
+    ['upload_archivo', 'sku', null, '{"archivo": "skus_v2.xlsx"}'],
+    ['creacion_usuario', 'usuario', null, '{"email": "nuevo@test.com"}'],
+    ['edicion_tenant', 'tenant', '{"plan": "basic"}', '{"plan": "enterprise"}'],
+    ['exportacion', 'sku', null, null],
+    ['logout', 'sesion', null, null],
+    ['cambio_regla', 'competidor', '{"margen": 0.15}', '{"margen": 0.20}'],
+  ]
+  return Array.from({ length: 60 }, (_, i) => {
+    const u = users[i % users.length]
+    const [accion, entidad, valorAnterior, valorNuevo] = combos[i % combos.length]
+    return {
+      id: `audit-${String(i + 1).padStart(3, '0')}`,
+      fecha: new Date(Date.now() - (60 - i) * 6 * 3600_000).toISOString(),
+      usuario: u.nombre,
+      tenantId: u.tenantId,
+      tenantNombre: u.tenantNombre,
+      accion,
+      entidad,
+      valorAnterior,
+      valorNuevo,
+      ip: u.ip,
+    }
+  }).reverse()
+})()
+
+function handleAuditLogs(method: string, path: string, params: URLSearchParams) {
+  // Export
+  const exportMatch = path.match(/^audit-logs\/export\/(excel|csv)$/)
+  if (method === 'GET' && exportMatch) {
+    const fmt = exportMatch[1]
+    const csvContent = 'Fecha,Usuario,Tenant,Acción,Entidad\n' +
+      MOCK_AUDIT_LOGS.slice(0, 100).map(r =>
+        `${r.fecha},${r.usuario},${r.tenantNombre},${r.accion},${r.entidad}`
+      ).join('\n')
+    const blob = new Blob([csvContent], { type: fmt === 'csv' ? 'text/csv' : 'application/octet-stream' })
+    return ok(blob)
+  }
+
+  if (method === 'GET' && path === 'audit-logs') {
+    let logs = [...MOCK_AUDIT_LOGS]
+
+    const tenantId = params.get('tenantId')
+    const accion = params.get('accion')
+    const entidad = params.get('entidad')
+    const fechaDesde = params.get('fechaDesde')
+    const fechaHasta = params.get('fechaHasta')
+    const usuario = params.get('usuario')
+    const busqueda = params.get('busqueda')
+
+    if (tenantId) logs = logs.filter(l => l.tenantId === tenantId)
+    if (accion) logs = logs.filter(l => l.accion === accion)
+    if (entidad) logs = logs.filter(l => l.entidad === entidad)
+    if (fechaDesde) logs = logs.filter(l => l.fecha >= fechaDesde)
+    if (fechaHasta) logs = logs.filter(l => l.fecha <= fechaHasta + 'T23:59:59')
+    if (usuario) logs = logs.filter(l => l.usuario.toLowerCase().includes(usuario.toLowerCase()))
+    if (busqueda) {
+      const q = busqueda.toLowerCase()
+      logs = logs.filter(l =>
+        l.usuario.toLowerCase().includes(q) ||
+        l.accion.includes(q) ||
+        l.entidad.includes(q) ||
+        (l.tenantNombre ?? '').toLowerCase().includes(q)
+      )
+    }
+
+    const total = logs.length
+    const page = Math.max(1, parseInt(params.get('page') ?? '1'))
+    const pageSize = Math.min(100, parseInt(params.get('pageSize') ?? '25'))
+    const paged = logs.slice((page - 1) * pageSize, page * pageSize)
+
+    return ok(paged, { 'x-total-count': String(total) })
+  }
+
+  return null
+}
+
+// ─── Admin Scraper ────────────────────────────────────────────────────────────
+
+const MOCK_CARGAS = [
+  {
+    id: 'carga-001',
+    fecha: new Date(Date.now() - 2 * 86400_000).toISOString(),
+    tipo: 'competidores',
+    tenantNombre: 'ConGrupo',
+    nombreArchivo: 'precios_mercado_oct.xlsx',
+    registrosRecibidos: 450,
+    registrosProcesados: 445,
+    totalErrores: 5,
+    estado: 'completado_con_errores',
+    subidoPor: 'admin@prisier.com',
+    errores: [
+      { fila: 23, columna: 'Precio', mensaje: 'Precio inválido: -5.00' },
+      { fila: 87, columna: 'Retailer', mensaje: 'Retailer vacío' },
+      { fila: 102, columna: 'Código SKU Cliente', mensaje: "SKU 'XYZ-999' no existe" },
+      { fila: 145, columna: 'Precio', mensaje: 'Precio inválido: 0' },
+      { fila: 312, columna: 'Nombre Competidor', mensaje: 'Nombre competidor vacío' },
+    ],
+  },
+  {
+    id: 'carga-002',
+    fecha: new Date(Date.now() - 5 * 86400_000).toISOString(),
+    tipo: 'skus',
+    tenantNombre: 'ConGrupo',
+    nombreArchivo: 'portafolio_v2.xlsx',
+    registrosRecibidos: 120,
+    registrosProcesados: 120,
+    totalErrores: 0,
+    estado: 'completado',
+    subidoPor: 'consultor@prisier.com',
+    errores: [],
+  },
+  {
+    id: 'carga-003',
+    fecha: new Date(Date.now() - 10 * 86400_000).toISOString(),
+    tipo: 'competidores',
+    tenantNombre: 'ConGrupo',
+    nombreArchivo: 'precios_sep_v1.xlsx',
+    registrosRecibidos: 0,
+    registrosProcesados: 0,
+    totalErrores: 1,
+    estado: 'error',
+    subidoPor: 'admin@prisier.com',
+    errores: [{ fila: 1, columna: null, mensaje: 'Columnas faltantes: nombre competidor' }],
+  },
+  {
+    id: 'carga-004',
+    fecha: new Date(Date.now() - 15 * 86400_000).toISOString(),
+    tipo: 'skus',
+    tenantNombre: 'ConGrupo',
+    nombreArchivo: 'portafolio_v1.xlsx',
+    registrosRecibidos: 95,
+    registrosProcesados: 95,
+    totalErrores: 0,
+    estado: 'completado',
+    subidoPor: 'consultor@prisier.com',
+    errores: [],
+  },
+]
+
+function handleAdminScraper(method: string, path: string, params: URLSearchParams) {
+  const tenantId = params.get('tenantId') ?? 'tenant-001'
+
+  if (method === 'GET' && path === 'admin/scraper/status') {
+    const last = MOCK_CARGAS[0]
+    const estado = !last ? 'sin_datos'
+      : last.estado === 'completado' || last.estado === 'completado_con_errores' ? 'activo'
+      : 'error'
+    return ok({ estado, ultimaCarga: last?.fecha ?? null, registrosProcesados: last?.registrosProcesados ?? 0, tenantId })
+  }
+
+  if (method === 'GET' && path === 'admin/scraper/historial') {
+    return ok(MOCK_CARGAS)
+  }
+
+  if (method === 'POST' && path === 'admin/scraper/upload') {
+    return ok({ procesados: 42, errores: [] })
+  }
+
   return null
 }
 
 // ─── Router principal ─────────────────────────────────────────────────────────
-function route<T>(method: string, rawUrl: string, body?: unknown): Promise<{ data: T }> {
-  const { path, params: _params } = parseUrl(rawUrl)
+function route<T>(method: string, rawUrl: string, body?: unknown): Promise<{ data: T; headers: Record<string, string> }> {
+  const { path, params } = parseUrl(rawUrl)
 
   const authResult = handleAuth(method, path, body)
-  if (authResult) return authResult as Promise<{ data: T }>
+  if (authResult) return authResult as Promise<{ data: T; headers: Record<string, string> }>
 
   if (path === 'tenants' || path.startsWith('tenants/')) {
     const r = handleTenants(method, path, body)
-    if (r) return r as Promise<{ data: T }>
+    if (r) return r as Promise<{ data: T; headers: Record<string, string> }>
   }
 
   if (path === 'users' || path.startsWith('users/')) {
     const r = handleUsers(method, path, body)
-    if (r) return r as Promise<{ data: T }>
+    if (r) return r as Promise<{ data: T; headers: Record<string, string> }>
   }
 
   if (path === 'reglas' || path.startsWith('reglas/')) {
-    const r = handleReglas(method, path, body)
-    if (r) return r as Promise<{ data: T }>
+    const r = handleReglas(method, path, body, params)
+    if (r) return r as Promise<{ data: T; headers: Record<string, string> }>
+  }
+
+  if (path === 'audit-logs' || path.startsWith('audit-logs/')) {
+    const r = handleAuditLogs(method, path, params)
+    if (r) return r as Promise<{ data: T; headers: Record<string, string> }>
+  }
+
+  if (path.startsWith('admin/scraper')) {
+    const r = handleAdminScraper(method, path, params)
+    if (r) return r as Promise<{ data: T; headers: Record<string, string> }>
   }
 
   console.warn(`[mockApi admin] Unhandled: ${method} /${path}`)
@@ -374,15 +715,15 @@ function route<T>(method: string, rawUrl: string, body?: unknown): Promise<{ dat
 // ─── Interfaz pública (compatible con axios) ──────────────────────────────────
 
 export interface ApiClient {
-  get<T = unknown>(url: string): Promise<{ data: T }>
-  post<T = unknown>(url: string, body?: unknown): Promise<{ data: T }>
-  put<T = unknown>(url: string, body?: unknown): Promise<{ data: T }>
-  delete<T = unknown>(url: string): Promise<{ data: T }>
-  patch<T = unknown>(url: string, body?: unknown): Promise<{ data: T }>
+  get<T = unknown>(url: string, config?: Record<string, unknown>): Promise<{ data: T; headers: Record<string, string> }>
+  post<T = unknown>(url: string, body?: unknown, config?: Record<string, unknown>): Promise<{ data: T; headers: Record<string, string> }>
+  put<T = unknown>(url: string, body?: unknown): Promise<{ data: T; headers: Record<string, string> }>
+  delete<T = unknown>(url: string): Promise<{ data: T; headers: Record<string, string> }>
+  patch<T = unknown>(url: string, body?: unknown): Promise<{ data: T; headers: Record<string, string> }>
 }
 
 const mockApi: ApiClient = {
-  get: <T>(url: string) => route<T>('GET', url),
+  get: <T>(url: string, _config?: Record<string, unknown>) => route<T>('GET', url),
   post: <T>(url: string, body?: unknown) => route<T>('POST', url, body),
   put: <T>(url: string, body?: unknown) => route<T>('PUT', url, body),
   delete: <T>(url: string) => route<T>('DELETE', url),

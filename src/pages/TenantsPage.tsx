@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Plus, Pencil, UserPlus, X } from 'lucide-react'
+import { Plus, Pencil, UserPlus, X, PowerOff } from 'lucide-react'
 import { useForm } from 'react-hook-form'
 import api from '../lib/api'
 import type { TenantListItem, ConsultorInfo, UserListItem } from '../lib/types'
@@ -17,6 +17,7 @@ export default function TenantsPage() {
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [assignTenantId, setAssignTenantId] = useState<string | null>(null)
+  const [confirmDesactivar, setConfirmDesactivar] = useState<TenantListItem | null>(null)
 
   const { data: tenants = [], isLoading } = useQuery({
     queryKey: ['tenants'],
@@ -25,6 +26,15 @@ export default function TenantsPage() {
 
   const { register, handleSubmit, reset, setValue } = useForm<TenantForm>({
     defaultValues: { industria: 'consumo_masivo', plan: 'basico', estado: 'activo' },
+  })
+
+  const toggleEstadoMutation = useMutation({
+    mutationFn: ({ id, estado }: { id: string; estado: string }) =>
+      api.patch(`/tenants/${id}/estado`, { estado }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tenants'] })
+      setConfirmDesactivar(null)
+    },
   })
 
   const saveMutation = useMutation({
@@ -140,6 +150,33 @@ export default function TenantsPage() {
         />
       )}
 
+      {/* Confirm Desactivar Modal */}
+      {confirmDesactivar && (
+        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="card p-6 w-full max-w-sm shadow-xl space-y-4">
+            <h2 className="text-base font-semibold text-p-dark">¿Desactivar {confirmDesactivar.nombre}?</h2>
+            <p className="text-sm text-p-gray">
+              Todos los usuarios de este cliente perderán el acceso inmediatamente. Esta acción se puede revertir.
+            </p>
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => setConfirmDesactivar(null)}
+                className="btn-secondary text-sm px-4 py-1.5"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={() => toggleEstadoMutation.mutate({ id: confirmDesactivar.id, estado: 'inactivo' })}
+                disabled={toggleEstadoMutation.isPending}
+                className="px-4 py-1.5 text-sm bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50"
+              >
+                {toggleEstadoMutation.isPending ? 'Desactivando...' : 'Desactivar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Table */}
       <div className="card overflow-hidden">
         <table className="data-table">
@@ -175,6 +212,23 @@ export default function TenantsPage() {
                     <button onClick={() => setAssignTenantId(t.id)} className="p-2 text-p-gray hover:text-p-lime rounded-lg hover:bg-p-lime-bg transition-colors" title="Asignar consultor">
                       <UserPlus size={15} />
                     </button>
+                    {t.estado === 'activo' ? (
+                      <button
+                        onClick={() => setConfirmDesactivar(t)}
+                        className="p-2 text-p-gray hover:text-p-red rounded-lg hover:bg-red-50 transition-colors"
+                        title="Desactivar"
+                      >
+                        <PowerOff size={15} />
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => toggleEstadoMutation.mutate({ id: t.id, estado: 'activo' })}
+                        className="p-2 text-p-muted hover:text-p-lime rounded-lg hover:bg-p-lime-bg transition-colors"
+                        title="Reactivar"
+                      >
+                        <PowerOff size={15} />
+                      </button>
+                    )}
                   </div>
                 </td>
               </tr>
