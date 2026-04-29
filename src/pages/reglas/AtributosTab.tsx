@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useUrlParam } from '../../lib/useUrlState'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { AlertTriangle, FileDown } from 'lucide-react'
+import { AlertTriangle, FileDown, Upload } from 'lucide-react'
 import api from '../../lib/api'
 import { downloadTemplate } from '../../lib/downloadTemplate'
 import type { CategoriaAtributos, AtributoCategoria } from '../../lib/types'
@@ -11,12 +11,18 @@ import SaveBar from '../../components/SaveBar'
 import SearchableSelect from '../../components/SearchableSelect'
 import { useToast } from '../../components/useToast'
 import { atributosSchema } from '../../schemas/reglas'
+import { useAuth } from '../../lib/auth'
+import UploadPlantillaModal from '../../components/UploadPlantillaModal'
 
 // ─── AtributosTab (R-002 — parte a: atributos + pesos) ───────────────────────
 
 function AtributosTab({ tenantId }: { tenantId: string }) {
   const queryClient = useQueryClient()
   const toast = useToast()
+  const { user } = useAuth()
+  const isAdmin = user?.rol === 'admin'
+  const [uploadOpen, setUploadOpen] = useState(false)
+
   const { data = [], isLoading, isError, refetch } = useQuery<CategoriaAtributos[]>({
     queryKey: ['reglas-atributos', tenantId],
     queryFn: () => api.get<CategoriaAtributos[]>(`reglas/atributos?tenantId=${tenantId}`).then(r => r.data),
@@ -81,18 +87,29 @@ function AtributosTab({ tenantId }: { tenantId: string }) {
         <p className="text-sm text-p-gray flex-1">
           Configura los 5 atributos de valor percibido por categoría. Los pesos deben sumar 100% (precisión 10 decimales).
         </p>
-        <button
-          onClick={() => downloadTemplate(
-            'atributos.xlsx',
-            'Atributos',
-            ['Categoría', 'Atributo', 'Peso (%)'],
-            { 'Categoría': 'Gaseosas', 'Atributo': 'Sabor', 'Peso (%)': 25 },
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <button
+            onClick={() => downloadTemplate(
+              'atributos.xlsx',
+              'Atributos',
+              ['Categoría', 'Atributo', 'Peso (%)'],
+              { 'Categoría': 'Gaseosas', 'Atributo': 'Sabor', 'Peso (%)': 25 },
+            )}
+            aria-label="Descargar plantilla de atributos"
+            className="btn-secondary text-xs flex items-center gap-1 py-1.5"
+          >
+            <FileDown size={13} aria-hidden /> Descargar plantilla
+          </button>
+          {isAdmin && (
+            <button
+              onClick={() => setUploadOpen(true)}
+              aria-label="Subir plantilla de atributos"
+              className="btn-secondary text-xs flex items-center gap-1 py-1.5"
+            >
+              <Upload size={13} aria-hidden /> Subir plantilla
+            </button>
           )}
-          aria-label="Descargar plantilla de atributos"
-          className="btn-secondary text-xs flex items-center gap-1 py-1.5 flex-shrink-0"
-        >
-          <FileDown size={13} aria-hidden /> Descargar plantilla
-        </button>
+        </div>
       </div>
 
       {/* Selector de categoría */}
@@ -181,6 +198,19 @@ function AtributosTab({ tenantId }: { tenantId: string }) {
         </p>
       )}
       <SaveBar onSave={handleSave} saving={mutation.isPending} dirty={dirty && !pesoError} />
+
+      {isAdmin && (
+        <UploadPlantillaModal
+          tipo="atributos"
+          tenantId={tenantId}
+          isOpen={uploadOpen}
+          onClose={() => setUploadOpen(false)}
+          onConfirmed={() => {
+            setUploadOpen(false)
+            queryClient.invalidateQueries({ queryKey: ['reglas-atributos', tenantId] })
+          }}
+        />
+      )}
     </div>
   )
 }

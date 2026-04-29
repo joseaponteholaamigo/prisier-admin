@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Plus, Pencil, X } from 'lucide-react'
 import { useForm } from 'react-hook-form'
@@ -37,9 +37,17 @@ export default function UsersPage() {
     queryFn: () => api.get<TenantListItem[]>('/tenants').then(r => r.data),
   })
 
-  const { register, handleSubmit, reset, setValue } = useForm<UserForm>({
+  const { register, handleSubmit, reset, setValue, watch } = useForm<UserForm>({
     defaultValues: { rol: 'cliente', estado: 'activo', tenantId: '' },
   })
+
+  const watchedRol = watch('rol')
+
+  useEffect(() => {
+    if (watchedRol !== 'cliente') {
+      setValue('tenantId', '')
+    }
+  }, [watchedRol, setValue])
 
   const saveMutation = useMutation({
     mutationFn: (data: UserForm) => {
@@ -145,7 +153,7 @@ export default function UsersPage() {
                     .map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
                 </select>
               </div>
-              {!editingId && (
+              {!editingId && watchedRol === 'cliente' && (
                 <div>
                   <label className="form-label">Tenant</label>
                   <select {...register('tenantId')} className="form-input">

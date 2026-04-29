@@ -1,6 +1,8 @@
 // ─── Mock API admin – reemplaza axios en modo VITE_MOCK_MODE=true ─────────────
+import * as XLSX from 'xlsx'
 import { store } from './store'
 import { SEED_USERS } from './data'
+import type { MockImportacionRecord } from './data'
 
 // ─── Utilidades ──────────────────────────────────────────────────────────────
 function ok<T>(data: T, headers: Record<string, string> = {}): Promise<{ data: T; headers: Record<string, string> }> {
@@ -615,11 +617,11 @@ const MOCK_CARGAS = [
     estado: 'completado_con_errores',
     subidoPor: 'admin@prisier.com',
     errores: [
-      { fila: 23, columna: 'Precio', mensaje: 'Precio inválido: -5.00' },
-      { fila: 87, columna: 'Retailer', mensaje: 'Retailer vacío' },
-      { fila: 102, columna: 'Código SKU Cliente', mensaje: "SKU 'XYZ-999' no existe" },
-      { fila: 145, columna: 'Precio', mensaje: 'Precio inválido: 0' },
-      { fila: 312, columna: 'Nombre Competidor', mensaje: 'Nombre competidor vacío' },
+      { fila: 23, columna: 'Precio', valor: '-5.00', mensaje: 'Precio inválido (negativo)' },
+      { fila: 87, columna: 'Retailer', valor: '', mensaje: 'Retailer vacío' },
+      { fila: 102, columna: 'Código SKU Cliente', valor: 'XYZ-999', mensaje: 'SKU no existe en portafolio' },
+      { fila: 145, columna: 'Precio', valor: '0', mensaje: 'Precio inválido (cero)' },
+      { fila: 312, columna: 'Nombre Competidor', valor: '', mensaje: 'Nombre competidor vacío' },
     ],
   },
   {
@@ -646,7 +648,7 @@ const MOCK_CARGAS = [
     totalErrores: 1,
     estado: 'error',
     subidoPor: 'admin@prisier.com',
-    errores: [{ fila: 1, columna: null, mensaje: 'Columnas faltantes: nombre competidor' }],
+    errores: [{ fila: 1, columna: null, valor: null, mensaje: 'Columnas faltantes: nombre competidor' }],
   },
   {
     id: 'carga-004',
@@ -671,7 +673,11 @@ function handleAdminScraper(method: string, path: string, params: URLSearchParam
     const estado = !last ? 'sin_datos'
       : last.estado === 'completado' || last.estado === 'completado_con_errores' ? 'activo'
       : 'error'
-    return ok({ estado, ultimaCarga: last?.fecha ?? null, registrosProcesados: last?.registrosProcesados ?? 0, tenantId })
+    const cutoff24h = Date.now() - 24 * 3600_000
+    const erroresUltimas24h = MOCK_CARGAS
+      .filter(c => new Date(c.fecha).getTime() >= cutoff24h)
+      .reduce((sum, c) => sum + c.totalErrores, 0)
+    return ok({ estado, ultimaCarga: last?.fecha ?? null, registrosProcesados: last?.registrosProcesados ?? 0, erroresUltimas24h, tenantId })
   }
 
   if (method === 'GET' && path === 'admin/scraper/historial') {
@@ -781,6 +787,272 @@ function handleDashboard(method: string, path: string) {
   return null
 }
 
+// ─── Importaciones v2 ────────────────────────────────────────────────────────
+
+const TIPO_LABELS: Record<MockImportacionRecord['tipo'], string> = {
+  portafolio: 'Portafolio',
+  categorias: 'Categorías',
+  competidores: 'Competidores',
+  atributos: 'Atributos',
+  calificaciones: 'Calificaciones',
+  elasticidad: 'Elasticidad',
+  canales: 'Canales',
+  competencia: 'Competencia (SKUs)',
+}
+
+/** Datos de preview simulados con variación por tipo */
+function buildPreviewResumen(tipo: MockImportacionRecord['tipo'], hasErrors: boolean): {
+  resumen: { nuevas: number; actualizadas: number; omitidas: number }
+  errores: Array<{ fila: number; columna?: string; mensaje: string }>
+} {
+  const baseData: Record<MockImportacionRecord['tipo'], { n: number; a: number }> = {
+    portafolio:    { n: 15, a: 8 },
+    categorias:    { n: 3,  a: 12 },
+    competidores:  { n: 42, a: 18 },
+    atributos:     { n: 8,  a: 4 },
+    calificaciones:{ n: 30, a: 10 },
+    elasticidad:   { n: 12, a: 0 },
+    canales:       { n: 5,  a: 3 },
+    competencia:   { n: 20, a: 6 },
+  }
+  const { n, a } = baseData[tipo]
+  if (hasErrors) {
+    return {
+      resumen: { nuevas: n, actualizadas: a, omitidas: 3 },
+      errores: [
+        { fila: 5, columna: 'EAN', mensaje: 'EAN duplicado: 7701234000099' },
+        { fila: 12, mensaje: 'Valor fuera de rango en columna Peso' },
+        { fila: 23, columna: 'Categoría', mensaje: "Categoría 'Desconocida' no existe en el sistema" },
+      ],
+    }
+  }
+  return {
+    resumen: { nuevas: n, actualizadas: a, omitidas: 0 },
+    errores: [],
+  }
+}
+
+function handleImportaciones(method: string, path: string, body: unknown, params: URLSearchParams) {
+  // Obtener tenantId del token mockeado
+  const token = typeof window !== 'undefined' ? (localStorage.getItem('access_token') ?? '') : ''
+  const userId = token.replace('mock_', '')
+  const user = SEED_USERS.find(u => u.id === userId)
+  const tenantId = params.get('tenantId') ?? 'tenant-001'
+
+  // POST /api/admin/importaciones/{tipo}/preview
+  const previewMatch = path.match(/^admin\/importaciones\/(portafolio|categorias|competidores|atributos|calificaciones|elasticidad|canales|competencia)\/preview$/)
+  if (method === 'POST' && previewMatch) {
+    const tipo = previewMatch[1] as MockImportacionRecord['tipo']
+
+    // Simular lock: si ya hay un procesando del mismo tipo para este tenant
+    const locked = (store.importacionesV2[tenantId] ?? []).some(
+      r => r.tipo === tipo && r.estado === 'procesando'
+    )
+    if (locked) {
+      return Promise.reject({
+        response: {
+          status: 409,
+          data: { error: `Hay una importación de ${TIPO_LABELS[tipo]} en curso, esperá a que termine.` },
+        },
+      })
+    }
+
+    // Simular error según nombre del archivo en FormData (no accesible en mock, usamos flag en body)
+    const fileName = body instanceof FormData
+      ? (body.get('file') as File | null)?.name ?? ''
+      : ''
+    const hasErrors = fileName.includes('error')
+    const isLockTest = fileName.includes('lock')
+
+    if (isLockTest) {
+      return Promise.reject({
+        response: {
+          status: 409,
+          data: { error: `Hay una importación de ${TIPO_LABELS[tipo]} en curso, esperá a que termine.` },
+        },
+      })
+    }
+
+    const previewId = `prev-${newId()}`
+    // Registrar preview en memoria para poder confirmarlo
+    store.importacionPreviews[previewId] = { tipo, tenantId }
+
+    const { resumen, errores } = buildPreviewResumen(tipo, hasErrors)
+
+    // Simular delay de backend (300ms)
+    return new Promise(resolve => setTimeout(() => resolve({
+      data: { previewId, tipo, resumen, errores },
+      headers: {},
+    }), 300))
+  }
+
+  // POST /api/admin/importaciones/{previewId}/confirmar
+  const confirmarMatch = path.match(/^admin\/importaciones\/(prev-[\w-]+)\/confirmar$/)
+  if (method === 'POST' && confirmarMatch) {
+    const previewId = confirmarMatch[1]
+    const preview = store.importacionPreviews[previewId]
+
+    if (!preview) {
+      return Promise.reject({ response: { status: 410, data: { error: 'Preview expirado o no existe. Volvé a subir el archivo.' } } })
+    }
+
+    const { tipo, tenantId: pTenantId } = preview
+
+    // Verificar lock nuevamente
+    const locked = (store.importacionesV2[pTenantId] ?? []).some(
+      r => r.tipo === tipo && r.estado === 'procesando'
+    )
+    if (locked) {
+      return Promise.reject({
+        response: {
+          status: 409,
+          data: { error: `Hay una importación de ${TIPO_LABELS[tipo]} en curso, esperá a que termine.` },
+        },
+      })
+    }
+
+    const importId = newId()
+    const now = new Date().toISOString()
+    const record: MockImportacionRecord = {
+      id: importId,
+      tenantId: pTenantId,
+      tipo,
+      usuarioNombre: user?.nombreCompleto ?? 'Admin Prisier',
+      usuarioId: user?.id ?? 'user-admin-001',
+      archivo: `${tipo}-upload.xlsx`,
+      estado: 'procesando',
+      filasNuevas: 0,
+      filasActualizadas: 0,
+      filasOmitidas: 0,
+      errores: [],
+      blobUrl: null,
+      createdAt: now,
+    }
+
+    if (!store.importacionesV2[pTenantId]) store.importacionesV2[pTenantId] = []
+    store.importacionesV2[pTenantId].push(record)
+
+    // Eliminar preview usado
+    delete store.importacionPreviews[previewId]
+
+    // Simular transición procesando → estado final en 2.5 segundos
+    const { resumen, errores } = buildPreviewResumen(tipo, false)
+    setTimeout(() => {
+      const idx = store.importacionesV2[pTenantId].findIndex(r => r.id === importId)
+      if (idx !== -1) {
+        const { nuevas, actualizadas, omitidas } = resumen
+        let estadoFinal: 'exitoso' | 'con_advertencias' | 'fallido'
+        if ((nuevas + actualizadas) === 0) {
+          estadoFinal = 'fallido'
+        } else if (omitidas > 0) {
+          estadoFinal = 'con_advertencias'
+        } else {
+          estadoFinal = 'exitoso'
+        }
+        store.importacionesV2[pTenantId][idx] = {
+          ...store.importacionesV2[pTenantId][idx],
+          estado: estadoFinal,
+          filasNuevas: nuevas,
+          filasActualizadas: actualizadas,
+          filasOmitidas: omitidas,
+          errores,
+          finalizedAt: new Date().toISOString(),
+        }
+      }
+    }, 2500)
+
+    return ok({ importId })
+  }
+
+  // DELETE /api/admin/importaciones/{previewId} — cancelar preview
+  const deletePreviewMatch = path.match(/^admin\/importaciones\/(prev-[\w-]+)$/)
+  if (method === 'DELETE' && deletePreviewMatch) {
+    const previewId = deletePreviewMatch[1]
+    if (store.importacionPreviews[previewId]) {
+      delete store.importacionPreviews[previewId]
+    }
+    return ok(null, {})
+  }
+
+  // GET /api/admin/importaciones/{id}/errores.xlsx — Excel anotado al vuelo
+  const erroresXlsxMatch = path.match(/^admin\/importaciones\/([\w-]+)\/errores\.xlsx$/)
+  if (method === 'GET' && erroresXlsxMatch) {
+    const id = erroresXlsxMatch[1]
+    let record: MockImportacionRecord | undefined
+    for (const recs of Object.values(store.importacionesV2)) {
+      record = recs.find(r => r.id === id)
+      if (record) break
+    }
+    if (!record) return Promise.reject({ response: { status: 404 } })
+
+    const wsData = [
+      ['Fila', 'Columna', 'Mensaje de error'],
+      ...record.errores.map(e => [e.fila, e.columna ?? '', e.mensaje]),
+    ]
+    const ws = XLSX.utils.aoa_to_sheet(wsData)
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, 'Errores')
+    const buf = XLSX.write(wb, { bookType: 'xlsx', type: 'array' }) as ArrayBuffer
+    const blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+    return ok(blob)
+  }
+
+  // GET /api/admin/importaciones/{id} — detalle de un registro
+  const getOneMatch = path.match(/^admin\/importaciones\/([\w-]+)$/)
+  if (method === 'GET' && getOneMatch) {
+    const id = getOneMatch[1]
+    let record: MockImportacionRecord | undefined
+    for (const recs of Object.values(store.importacionesV2)) {
+      record = recs.find(r => r.id === id)
+      if (record) break
+    }
+    if (!record) return Promise.reject({ response: { status: 404 } })
+    return ok({
+      id: record.id,
+      tenantId: record.tenantId,
+      tipo: record.tipo,
+      usuarioId: record.usuarioId,
+      usuarioNombre: record.usuarioNombre,
+      estado: record.estado,
+      archivo: record.archivo,
+      filasNuevas: record.filasNuevas,
+      filasActualizadas: record.filasActualizadas,
+      filasOmitidas: record.filasOmitidas,
+      errores: record.errores,
+      blobUrl: null,
+      createdAt: record.createdAt,
+      finalizedAt: record.finalizedAt,
+    })
+  }
+
+  // GET /api/admin/importaciones?tenantId=&tipo=&estado=&desde=&hasta=&usuario=&page=&page_size=
+  if (method === 'GET' && path === 'admin/importaciones') {
+    const tid = params.get('tenantId') ?? 'tenant-001'
+    let items = [...(store.importacionesV2[tid] ?? [])].reverse()
+
+    const tipo = params.get('tipo')
+    const estado = params.get('estado')
+    const desde = params.get('desde')
+    const hasta = params.get('hasta')
+    const usuario = params.get('usuario')
+
+    if (tipo) items = items.filter(r => r.tipo === tipo)
+    if (estado) items = items.filter(r => r.estado === estado)
+    if (desde) items = items.filter(r => r.createdAt >= desde)
+    if (hasta) items = items.filter(r => r.createdAt <= hasta + 'T23:59:59')
+    if (usuario) items = items.filter(r => r.usuarioNombre.toLowerCase().includes(usuario.toLowerCase()))
+
+    const total = items.length
+    const page = Math.max(1, parseInt(params.get('page') ?? '1'))
+    const pageSize = Math.min(100, parseInt(params.get('page_size') ?? '20'))
+    const paged = items.slice((page - 1) * pageSize, page * pageSize)
+
+    return ok({ items: paged, total, page, pageSize })
+  }
+
+  return null
+}
+
 // ─── Router principal ─────────────────────────────────────────────────────────
 function route<T>(method: string, rawUrl: string, body?: unknown): Promise<{ data: T; headers: Record<string, string> }> {
   const { path, params } = parseUrl(rawUrl)
@@ -815,6 +1087,11 @@ function route<T>(method: string, rawUrl: string, body?: unknown): Promise<{ dat
 
   if (path.startsWith('admin/scraper')) {
     const r = handleAdminScraper(method, path, params)
+    if (r) return r as Promise<{ data: T; headers: Record<string, string> }>
+  }
+
+  if (path === 'admin/importaciones' || path.startsWith('admin/importaciones/')) {
+    const r = handleImportaciones(method, path, body, params)
     if (r) return r as Promise<{ data: T; headers: Record<string, string> }>
   }
 

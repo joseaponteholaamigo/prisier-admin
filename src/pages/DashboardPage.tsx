@@ -116,7 +116,7 @@ export default function DashboardPage() {
               Ver detalle <ArrowRight size={11} />
             </Link>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
             <div className="flex items-center gap-3">
               {scraperStatus.estado === 'activo' ? (
                 <CheckCircle2 size={20} className="text-p-lime shrink-0" />
@@ -137,7 +137,7 @@ export default function DashboardPage() {
               </div>
             </div>
             <div>
-              <p className="text-xs text-p-muted mb-0.5">Ultima corrida</p>
+              <p className="text-xs text-p-muted mb-0.5">Última corrida</p>
               <p className="text-sm font-medium text-p-dark">
                 {scraperStatus.ultimaCarga
                   ? timeAgo(scraperStatus.ultimaCarga)
@@ -148,6 +148,12 @@ export default function DashboardPage() {
               <p className="text-xs text-p-muted mb-0.5">Filas ingestadas</p>
               <p className="text-sm font-medium text-p-dark">
                 {scraperStatus.registrosProcesados.toLocaleString('es-CO')}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs text-p-muted mb-0.5">Errores últimas 24h</p>
+              <p className={`text-sm font-medium ${scraperStatus.erroresUltimas24h > 0 ? 'text-p-red' : 'text-p-dark'}`}>
+                {scraperStatus.erroresUltimas24h.toLocaleString('es-CO')}
               </p>
             </div>
           </div>

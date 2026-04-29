@@ -184,15 +184,55 @@ export interface RetailerItem {
   activo: boolean
 }
 
-// Importaciones de portafolio
+// ─── Importaciones ────────────────────────────────────────────────────────────
+
+export type TipoPlantilla =
+  | 'portafolio'
+  | 'categorias'
+  | 'competidores'
+  | 'atributos'
+  | 'calificaciones'
+  | 'elasticidad'
+  | 'canales'
+  | 'competencia'
+
+export type EstadoImportacion = 'procesando' | 'exitoso' | 'con_advertencias' | 'fallido'
+
+export interface ImportacionError {
+  fila: number
+  columna?: string
+  mensaje: string
+}
+
 export interface ImportacionRecord {
   id: string
-  fecha: string
+  tenantId: string
+  tipo: TipoPlantilla
+  usuarioNombre: string
+  usuarioId: string
   archivo: string
-  totalSkus: number
-  advertencias: number
-  errores: string[]
-  estado: 'exitoso' | 'con_advertencias' | 'fallido'
+  estado: EstadoImportacion
+  filasNuevas: number
+  filasActualizadas: number
+  filasOmitidas: number
+  errores: ImportacionError[]
+  blobUrl: string | null   // solo prod, en mock siempre null
+  createdAt: string
+  finalizedAt?: string
+}
+
+export interface ImportacionPreview {
+  previewId: string
+  tipo: TipoPlantilla
+  resumen: { nuevas: number; actualizadas: number; omitidas: number }
+  errores: ImportacionError[]
+}
+
+export interface ImportacionesListResponse {
+  items: ImportacionRecord[]
+  total: number
+  page: number
+  pageSize: number
 }
 
 // ─── Monitoreo Scraper ────────────────────────────────────────────────────────
@@ -201,6 +241,7 @@ export interface ScraperStatus {
   estado: 'activo' | 'error' | 'sin_datos'
   ultimaCarga: string | null
   registrosProcesados: number
+  erroresUltimas24h: number
   tenantId: string
 }
 
@@ -215,7 +256,7 @@ export interface ScraperHistorialRow {
   totalErrores: number
   estado: 'completado' | 'completado_con_errores' | 'error' | 'procesando'
   subidoPor?: string | null
-  errores: { fila: number; columna: string | null; mensaje: string }[]
+  errores: { fila: number; columna: string | null; valor: string | null; mensaje: string }[]
 }
 
 // ─── Auditoría ────────────────────────────────────────────────────────────────

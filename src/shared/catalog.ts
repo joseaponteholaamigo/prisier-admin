@@ -64,18 +64,15 @@ export const CATEGORIAS: CategoriaOption[] = [
 ]
 
 // ─── Industrias soportadas para Tenants ─────────────────────────────────────
+// MVP: solo 3 industrias con módulos verticales operativos.
+// Decisión 2026-04-28 (G6 auditoría): catálogo cerrado al subset documentado en
+// docs/requerimientos/admin/01-gestion-tenants.md. Ampliar requiere agregar
+// la lógica vertical correspondiente.
 
 export const INDUSTRIAS: CatalogOption[] = [
-  { value: 'alimentos',       label: 'Alimentos' },
-  { value: 'bebidas',         label: 'Bebidas' },
   { value: 'consumo_masivo',  label: 'Consumo Masivo' },
   { value: 'educacion',       label: 'Educación' },
-  { value: 'electronica',     label: 'Electrónica' },
-  { value: 'farmaceutico',    label: 'Farmacéutico' },
-  { value: 'lacteos',         label: 'Lácteos' },
   { value: 'moda',            label: 'Moda' },
-  { value: 'retail',          label: 'Retail' },
-  { value: 'textil',          label: 'Textil' },
 ]
 
 // ─── Roles del sistema (D1 — rol único `cliente` para tenant users) ─────────

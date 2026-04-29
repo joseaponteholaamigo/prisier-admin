@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from 'react'
 import { useUrlParam } from '../../lib/useUrlState'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { AlertTriangle, Save, Search, FileDown } from 'lucide-react'
+import { AlertTriangle, Save, Search, FileDown, Upload } from 'lucide-react'
 import api from '../../lib/api'
 import { downloadTemplate } from '../../lib/downloadTemplate'
 import type { CompetidoresData, SkuCalificaciones } from '../../lib/types'
@@ -9,12 +9,17 @@ import Spinner from '../../components/Spinner'
 import QueryErrorState from '../../components/QueryErrorState'
 import { useToast } from '../../components/useToast'
 import { calificacionesSchema } from '../../schemas/reglas'
+import { useAuth } from '../../lib/auth'
+import UploadPlantillaModal from '../../components/UploadPlantillaModal'
 
 // ─── CalificacionesTab (R-002/R-003 — parte b: SKU × atributo) ───────────────
 
 function CalificacionesTab({ tenantId }: { tenantId: string }) {
   const queryClient = useQueryClient()
   const toast = useToast()
+  const { user } = useAuth()
+  const isAdmin = user?.rol === 'admin'
+  const [uploadOpen, setUploadOpen] = useState(false)
   const [filterCat, setFilterCat] = useUrlParam('cat')
   const [searchPropios, setSearchPropios] = useUrlParam('q')
   const [rawModo, setModo] = useUrlParam('modo', 'propio')
@@ -151,23 +156,34 @@ function CalificacionesTab({ tenantId }: { tenantId: string }) {
         <p className="text-sm text-p-gray flex-1">
           Calificación por SKU × atributo. Configura tanto para el propio producto como para cada competidor asignado. Precisión 10 decimales.
         </p>
-        <button
-          onClick={() => downloadTemplate(
-            'calificaciones.xlsx',
-            'Calificaciones',
-            ['EAN', 'Atributo', 'Tipo (propio|competidor)', 'Calificación'],
-            {
-              'EAN': '7702001234567',
-              'Atributo': 'Sabor',
-              'Tipo (propio|competidor)': 'propio',
-              'Calificación': 4,
-            },
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <button
+            onClick={() => downloadTemplate(
+              'calificaciones.xlsx',
+              'Calificaciones',
+              ['EAN', 'Atributo', 'Tipo (propio|competidor)', 'Calificación'],
+              {
+                'EAN': '7702001234567',
+                'Atributo': 'Sabor',
+                'Tipo (propio|competidor)': 'propio',
+                'Calificación': 4,
+              },
+            )}
+            aria-label="Descargar plantilla de calificaciones"
+            className="btn-secondary text-xs flex items-center gap-1 py-1.5"
+          >
+            <FileDown size={13} aria-hidden /> Descargar plantilla
+          </button>
+          {isAdmin && (
+            <button
+              onClick={() => setUploadOpen(true)}
+              aria-label="Subir plantilla de calificaciones"
+              className="btn-secondary text-xs flex items-center gap-1 py-1.5"
+            >
+              <Upload size={13} aria-hidden /> Subir plantilla
+            </button>
           )}
-          aria-label="Descargar plantilla de calificaciones"
-          className="btn-secondary text-xs flex items-center gap-1 py-1.5 flex-shrink-0"
-        >
-          <FileDown size={13} aria-hidden /> Descargar plantilla
-        </button>
+        </div>
       </div>
 
       <div className="flex flex-col md:flex-row gap-4 items-start">
@@ -353,6 +369,19 @@ function CalificacionesTab({ tenantId }: { tenantId: string }) {
           </div>
         )}
       </div>
+
+      {isAdmin && (
+        <UploadPlantillaModal
+          tipo="calificaciones"
+          tenantId={tenantId}
+          isOpen={uploadOpen}
+          onClose={() => setUploadOpen(false)}
+          onConfirmed={() => {
+            setUploadOpen(false)
+            queryClient.invalidateQueries({ queryKey: ['reglas-r001', tenantId] })
+          }}
+        />
+      )}
     </div>
   )
 }

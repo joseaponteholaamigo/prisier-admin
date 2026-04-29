@@ -3,7 +3,7 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useUrlParam, useUrlNumber } from '../../lib/useUrlState'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Plus, Trash2, Search, Pencil, X, FileDown } from 'lucide-react'
+import { Plus, Trash2, Search, Pencil, X, FileDown, Upload } from 'lucide-react'
 import api from '../../lib/api'
 import { downloadTemplate } from '../../lib/downloadTemplate'
 import type { CategoriaConfig } from '../../lib/types'
@@ -14,6 +14,8 @@ import EmptyState from '../../components/EmptyState'
 import { useToast } from '../../components/useToast'
 import { makeCategoriaSchema } from '../../schemas/reglas'
 import { useFocusTrap } from '../../lib/useFocusTrap'
+import { useAuth } from '../../lib/auth'
+import UploadPlantillaModal from '../../components/UploadPlantillaModal'
 
 // ─── CategoriasTab ────────────────────────────────────────────────────────────
 
@@ -150,6 +152,9 @@ function CategoriaModal({
 function CategoriasTab({ tenantId }: { tenantId: string }) {
   const queryClient = useQueryClient()
   const toast = useToast()
+  const { user } = useAuth()
+  const isAdmin = user?.rol === 'admin'
+  const [uploadOpen, setUploadOpen] = useState(false)
   const [modal, setModal] = useState<{ mode: 'add' | 'edit'; item?: CategoriaConfig } | null>(null)
   const [confirmDelete, setConfirmDelete] = useState<CategoriaConfig | null>(null)
   const [page, setPage] = useUrlNumber('page', 1)
@@ -215,9 +220,34 @@ function CategoriasTab({ tenantId }: { tenantId: string }) {
 
   return (
     <div>
-      <p className="text-sm text-p-gray mb-4">
-        Configura el IVA aplicable por categoría de producto.
-      </p>
+      <div className="flex items-start justify-between gap-3 mb-4">
+        <p className="text-sm text-p-gray flex-1">
+          Configura el IVA aplicable por categoría de producto.
+        </p>
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <button
+            onClick={() => downloadTemplate(
+              'categorias.xlsx',
+              'Categorías',
+              ['Categoría', 'IVA (%)'],
+              { 'Categoría': 'Gaseosas', 'IVA (%)': 19 },
+            )}
+            aria-label="Descargar plantilla de categorías"
+            className="btn-secondary text-xs flex items-center gap-1 py-1.5"
+          >
+            <FileDown size={13} aria-hidden /> Descargar plantilla
+          </button>
+          {isAdmin && (
+            <button
+              onClick={() => setUploadOpen(true)}
+              aria-label="Subir plantilla de categorías"
+              className="btn-secondary text-xs flex items-center gap-1 py-1.5"
+            >
+              <Upload size={13} aria-hidden /> Subir plantilla
+            </button>
+          )}
+        </div>
+      </div>
 
       <div className="card mt-5">
         <div className="mb-4 flex flex-wrap items-center gap-2">
@@ -232,18 +262,6 @@ function CategoriasTab({ tenantId }: { tenantId: string }) {
             />
           </div>
           <div className="flex items-center gap-2 sm:ml-auto w-full sm:w-auto">
-            <button
-              onClick={() => downloadTemplate(
-                'categorias.xlsx',
-                'Categorías',
-                ['Categoría', 'IVA (%)'],
-                { 'Categoría': 'Gaseosas', 'IVA (%)': 19 },
-              )}
-              aria-label="Descargar plantilla de categorías"
-              className="btn-secondary text-xs flex items-center gap-1 py-1.5 flex-1 sm:flex-none justify-center"
-            >
-              <FileDown size={13} aria-hidden /> Descargar plantilla
-            </button>
             <button
               onClick={() => setModal({ mode: 'add' })}
               className="btn-secondary text-xs flex items-center gap-1 py-1.5 flex-1 sm:flex-none justify-center"
@@ -354,6 +372,19 @@ function CategoriasTab({ tenantId }: { tenantId: string }) {
           message={`Se eliminará "${confirmDelete.nombre}" y su configuración de IVA. Esta acción no se puede deshacer.`}
           onConfirm={() => handleDelete(confirmDelete)}
           onClose={() => setConfirmDelete(null)}
+        />
+      )}
+
+      {isAdmin && (
+        <UploadPlantillaModal
+          tipo="categorias"
+          tenantId={tenantId}
+          isOpen={uploadOpen}
+          onClose={() => setUploadOpen(false)}
+          onConfirmed={() => {
+            setUploadOpen(false)
+            queryClient.invalidateQueries({ queryKey: ['reglas-categorias', tenantId] })
+          }}
         />
       )}
     </div>

@@ -1,7 +1,7 @@
 import { useState, useMemo, useRef, useEffect } from 'react'
 import { useUrlParam } from '../../lib/useUrlState'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { AlertTriangle, Save, Search, FileDown } from 'lucide-react'
+import { AlertTriangle, Save, Search, FileDown, Upload } from 'lucide-react'
 import api from '../../lib/api'
 import { downloadTemplate } from '../../lib/downloadTemplate'
 import type { ElasticidadItem, PortafolioData, PortafolioItem } from '../../lib/types'
@@ -11,6 +11,7 @@ import SoloPrisierBadge from '../../components/SoloPrisierBadge'
 import { useToast } from '../../components/useToast'
 import { elasticidadItemSchema } from '../../schemas/reglas'
 import { useAuth } from '../../lib/auth'
+import UploadPlantillaModal from '../../components/UploadPlantillaModal'
 
 // ─── ElasticidadTab (R-004) ───────────────────────────────────────────────────
 
@@ -19,6 +20,7 @@ function ElasticidadTab({ tenantId }: { tenantId: string }) {
   const toast = useToast()
   const { user } = useAuth()
   const isAdmin = user?.rol === 'admin'
+  const [uploadOpen, setUploadOpen] = useState(false)
 
   const { data = [], isLoading, isError, refetch } = useQuery<ElasticidadItem[]>({
     queryKey: ['reglas-elasticidad', tenantId],
@@ -164,6 +166,15 @@ function ElasticidadTab({ tenantId }: { tenantId: string }) {
         >
           <FileDown size={13} aria-hidden /> Descargar plantilla
         </button>
+        {isAdmin && (
+          <button
+            onClick={() => setUploadOpen(true)}
+            aria-label="Subir plantilla de elasticidad"
+            className="btn-secondary text-xs flex items-center gap-1 py-1.5"
+          >
+            <Upload size={13} aria-hidden /> Subir plantilla
+          </button>
+        )}
         <SoloPrisierBadge />
       </div>
 
@@ -281,6 +292,19 @@ function ElasticidadTab({ tenantId }: { tenantId: string }) {
           </div>
         )}
       </div>
+
+      {isAdmin && (
+        <UploadPlantillaModal
+          tipo="elasticidad"
+          tenantId={tenantId}
+          isOpen={uploadOpen}
+          onClose={() => setUploadOpen(false)}
+          onConfirmed={() => {
+            setUploadOpen(false)
+            queryClient.invalidateQueries({ queryKey: ['reglas-elasticidad', tenantId] })
+          }}
+        />
+      )}
     </div>
   )
 }

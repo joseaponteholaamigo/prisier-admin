@@ -3,7 +3,7 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useUrlParam, useUrlNumber } from '../../lib/useUrlState'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Plus, Trash2, Pencil, Search, X, FileDown } from 'lucide-react'
+import { Plus, Trash2, Pencil, Search, X, FileDown, Upload } from 'lucide-react'
 import api from '../../lib/api'
 import { downloadTemplate } from '../../lib/downloadTemplate'
 import type { CanalesMargenes, CanalSimple, PortafolioData } from '../../lib/types'
@@ -17,6 +17,7 @@ import SearchableSelect from '../../components/SearchableSelect'
 import { makeCanalMargenSchema } from '../../schemas/reglas'
 import { useFocusTrap } from '../../lib/useFocusTrap'
 import { useAuth } from '../../lib/auth'
+import UploadPlantillaModal from '../../components/UploadPlantillaModal'
 
 // ─── CanalMargenModal ────────────────────────────────────────────────────────
 
@@ -169,6 +170,7 @@ function CanalesTab({ tenantId }: { tenantId: string }) {
   const toast = useToast()
   const { user } = useAuth()
   const isAdmin = user?.rol === 'admin'
+  const [uploadOpen, setUploadOpen] = useState(false)
   const [modal, setModal] = useState<{ mode: 'add' } | { mode: 'edit'; idx: number } | null>(null)
   const [confirmDelete, setConfirmDelete] = useState<{ nombre: string; idx: number } | null>(null)
   const [page, setPage] = useUrlNumber('page', 1)
@@ -263,6 +265,27 @@ function CanalesTab({ tenantId }: { tenantId: string }) {
           Márgenes por canal y categoría. El precio al canal = PVP sin IVA × margen. Las categorías se derivan del portafolio cargado.
         </p>
         <SoloPrisierBadge />
+        <button
+          onClick={() => downloadTemplate(
+            'canales.xlsx',
+            'Canales',
+            ['Canal', 'Categoría', 'Margen (%)'],
+            { 'Canal': 'Mayorista', 'Categoría': 'Gaseosas', 'Margen (%)': 80 },
+          )}
+          aria-label="Descargar plantilla de canales"
+          className="btn-secondary text-xs flex items-center gap-1 py-1.5"
+        >
+          <FileDown size={13} aria-hidden /> Descargar plantilla
+        </button>
+        {isAdmin && (
+          <button
+            onClick={() => setUploadOpen(true)}
+            aria-label="Subir plantilla de canales"
+            className="btn-secondary text-xs flex items-center gap-1 py-1.5"
+          >
+            <Upload size={13} aria-hidden /> Subir plantilla
+          </button>
+        )}
       </div>
 
       {categorias.length === 0 ? (
@@ -294,18 +317,6 @@ function CanalesTab({ tenantId }: { tenantId: string }) {
                 />
               </div>
               <div className="flex items-center gap-2 sm:ml-auto w-full sm:w-auto">
-                <button
-                  onClick={() => downloadTemplate(
-                    'canales.xlsx',
-                    'Canales',
-                    ['Canal', 'Categoría', 'Margen (decimal)'],
-                    { 'Canal': 'Mayorista', 'Categoría': 'Gaseosas', 'Margen (decimal)': 0.80 },
-                  )}
-                  aria-label="Descargar plantilla de canales"
-                  className="btn-secondary text-xs flex items-center gap-1 py-1.5 flex-1 sm:flex-none justify-center"
-                >
-                  <FileDown size={13} aria-hidden /> Descargar plantilla
-                </button>
                 <button
                   onClick={() => setModal({ mode: 'add' })}
                   disabled={!isAdmin}
@@ -425,6 +436,19 @@ function CanalesTab({ tenantId }: { tenantId: string }) {
           message={`Se eliminará "${confirmDelete.nombre}" y todos sus márgenes configurados. Esta acción no se puede deshacer.`}
           onConfirm={() => handleDelete(confirmDelete.idx)}
           onClose={() => setConfirmDelete(null)}
+        />
+      )}
+
+      {isAdmin && (
+        <UploadPlantillaModal
+          tipo="canales"
+          tenantId={tenantId}
+          isOpen={uploadOpen}
+          onClose={() => setUploadOpen(false)}
+          onConfirmed={() => {
+            setUploadOpen(false)
+            queryClient.invalidateQueries({ queryKey: ['reglas-canales', tenantId] })
+          }}
         />
       )}
     </div>

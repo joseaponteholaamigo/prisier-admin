@@ -6,6 +6,7 @@ import {
 } from 'lucide-react'
 import api from '../lib/api'
 import type { TenantListItem, ScraperHistorialRow } from '../lib/types'
+import { MAX_FILE_SIZE_BYTES } from '../lib/templateSpecs'
 
 export default function MonitoreoScraperPage() {
   const [tenantId, setTenantId] = useState('tenant-001')
@@ -49,8 +50,8 @@ function UploadManual({ tenantId }: { tenantId: string }) {
       setResult({ procesados: 0, errores: ['Solo se aceptan archivos .xlsx'] })
       return
     }
-    if (file.size > 5 * 1024 * 1024) {
-      setResult({ procesados: 0, errores: ['El archivo excede el límite de 5MB'] })
+    if (file.size > MAX_FILE_SIZE_BYTES) {
+      setResult({ procesados: 0, errores: ['El archivo excede el límite de 10MB'] })
       return
     }
     setUploading(true)
@@ -108,7 +109,7 @@ function UploadManual({ tenantId }: { tenantId: string }) {
             <Upload className={`w-6 h-6 ${isDragOver ? 'text-p-lime' : 'text-p-muted'}`} />
             <div className="text-left">
               <p className="text-sm text-p-dark">Arrastra el archivo .xlsx aquí</p>
-              <p className="text-xs text-p-muted">o haz clic para seleccionar (máx. 5MB)</p>
+              <p className="text-xs text-p-muted">o haz clic para seleccionar (máx. 10MB)</p>
             </div>
           </div>
         )}
@@ -217,7 +218,8 @@ function HistorialSection({ tenantId }: { tenantId: string }) {
                         <thead>
                           <tr className="text-p-muted border-b border-p-border">
                             <th className="text-left py-1 pr-3 w-16">Fila</th>
-                            <th className="text-left py-1 pr-3 w-24">Columna</th>
+                            <th className="text-left py-1 pr-3 w-32">Columna</th>
+                            <th className="text-left py-1 pr-3 w-40">Valor recibido</th>
                             <th className="text-left py-1">Error</th>
                           </tr>
                         </thead>
@@ -226,6 +228,9 @@ function HistorialSection({ tenantId }: { tenantId: string }) {
                             <tr key={i}>
                               <td className="py-1 pr-3 text-p-muted">{e.fila}</td>
                               <td className="py-1 pr-3 text-p-muted">{e.columna ?? '—'}</td>
+                              <td className="py-1 pr-3 font-mono text-p-dark">
+                                {e.valor === null ? '—' : e.valor === '' ? <span className="italic text-p-muted">(vacío)</span> : e.valor}
+                              </td>
                               <td className="py-1 text-p-red">{e.mensaje}</td>
                             </tr>
                           ))}

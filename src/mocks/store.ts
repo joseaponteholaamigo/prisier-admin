@@ -18,6 +18,7 @@ import {
   SEED_R010,
   SEED_R010_EXTRA,
   SEED_IMPORTACIONES,
+  SEED_IMPORTACIONES_V2,
   SEED_CATEGORIAS,
   SEED_SKUS_COMPETENCIA,
   SEED_VINCULACIONES,
@@ -76,6 +77,7 @@ import {
   type MockRetailer,
   type MockPortafolio,
   type MockImportRecord,
+  type MockImportacionRecord,
   type MockCategoriaConfig,
   type MockSkuCompetencia,
   type MockVinculacion,
@@ -243,6 +245,19 @@ export const store = {
     'tenant-005': [],
     'tenant-006': [],
   } as Record<string, MockImportRecord[]>,
+
+  // Importaciones v2 — nuevo flujo con preview + confirmación
+  importacionesV2: {
+    'tenant-001': structuredClone(SEED_IMPORTACIONES_V2),
+    'tenant-002': [],
+    'tenant-003': [],
+    'tenant-004': [],
+    'tenant-005': [],
+    'tenant-006': [],
+  } as Record<string, MockImportacionRecord[]>,
+
+  // Previews en memoria: previewId → { tipo, tenantId }
+  importacionPreviews: {} as Record<string, { tipo: MockImportacionRecord['tipo']; tenantId: string }>,
 
   vinculaciones: {
     'tenant-001': structuredClone(SEED_VINCULACIONES),

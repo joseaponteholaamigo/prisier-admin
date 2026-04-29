@@ -22,15 +22,15 @@ const RetailersTab     = lazy(() => import('./reglas/RetailersTab'))
 
 const TABS = [
   { id: 'portafolio',     label: 'Portafolio' },
-  { id: 'importaciones',  label: 'Importaciones' },
   { id: 'categorias',     label: 'Categorías' },
-  { id: 'retailers',      label: 'Retailers' },
   { id: 'competidores',   label: 'Competidores' },
   { id: 'atributos',      label: 'Atributos' },
   { id: 'calificaciones', label: 'Calificaciones' },
   { id: 'elasticidad',    label: 'Elasticidad' },
   { id: 'canales',        label: 'Canales' },
   { id: 'umbrales',       label: 'Umbrales' },
+  { id: 'retailers',      label: 'Retailers' },
+  { id: 'importaciones',  label: 'Importaciones' },
 ] as const
 
 type TabId = typeof TABS[number]['id']

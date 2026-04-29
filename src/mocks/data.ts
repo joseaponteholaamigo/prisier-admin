@@ -142,7 +142,7 @@ export const SEED_TENANTS: MockTenant[] = [
   {
     id: 'tenant-002',
     nombre: 'BevMax S.A.',
-    industria: 'bebidas',
+    industria: 'consumo_masivo',
     plan: 'professional',
     estado: 'activo',
     createdAt: new Date(Date.now() - 60 * 86400_000).toISOString(),
@@ -151,7 +151,7 @@ export const SEED_TENANTS: MockTenant[] = [
   {
     id: 'tenant-003',
     nombre: 'Lácteos Andes',
-    industria: 'lacteos',
+    industria: 'consumo_masivo',
     plan: 'enterprise',
     estado: 'activo',
     createdAt: new Date(Date.now() - 45 * 86400_000).toISOString(),
@@ -169,7 +169,7 @@ export const SEED_TENANTS: MockTenant[] = [
   {
     id: 'tenant-005',
     nombre: 'FreshMart Corp.',
-    industria: 'retail',
+    industria: 'consumo_masivo',
     plan: 'enterprise',
     estado: 'activo',
     createdAt: new Date(Date.now() - 20 * 86400_000).toISOString(),
@@ -178,7 +178,7 @@ export const SEED_TENANTS: MockTenant[] = [
   {
     id: 'tenant-006',
     nombre: 'NutriPack S.A.S.',
-    industria: 'alimentos',
+    industria: 'consumo_masivo',
     plan: 'professional',
     estado: 'inactivo',
     createdAt: new Date(Date.now() - 10 * 86400_000).toISOString(),
@@ -527,8 +527,9 @@ export const SEED_R006: MockColConfig = {
   tipoEstructura: 'pvp_sugerido',
 }
 
-// ─── Importaciones de portafolio ─────────────────────────────────────────────
+// ─── Importaciones (legacy — mantenido para evitar romper store.ts) ──────────
 
+/** @deprecated Usar MockImportacionRecord para nuevas importaciones */
 export interface MockImportRecord {
   id: string
   fecha: string
@@ -539,36 +540,219 @@ export interface MockImportRecord {
   estado: 'exitoso' | 'con_advertencias' | 'fallido'
 }
 
-export const SEED_IMPORTACIONES: MockImportRecord[] = [
+/** @deprecated No se usa en el nuevo flujo */
+export const SEED_IMPORTACIONES: MockImportRecord[] = []
+
+// ─── Importaciones v2 (nuevo flujo con preview + confirmación) ───────────────
+
+export interface MockImportacionError {
+  fila: number
+  columna?: string
+  mensaje: string
+}
+
+export interface MockImportacionRecord {
+  id: string
+  tenantId: string
+  tipo: 'portafolio' | 'categorias' | 'competidores' | 'atributos' | 'calificaciones' | 'elasticidad' | 'canales' | 'competencia'
+  usuarioNombre: string
+  usuarioId: string
+  archivo: string
+  estado: 'procesando' | 'exitoso' | 'con_advertencias' | 'fallido'
+  filasNuevas: number
+  filasActualizadas: number
+  filasOmitidas: number
+  errores: MockImportacionError[]
+  blobUrl: string | null
+  createdAt: string
+  finalizedAt?: string
+}
+
+export const SEED_IMPORTACIONES_V2: MockImportacionRecord[] = [
   {
-    id: 'imp-001',
-    fecha: new Date(Date.now() - 30 * 86400_000).toISOString(),
-    archivo: 'portafolio-congrupo-v1.xlsx',
-    totalSkus: 20,
-    advertencias: 0,
-    errores: [],
+    id: 'impv2-001',
+    tenantId: 'tenant-001',
+    tipo: 'portafolio',
+    usuarioNombre: 'Admin Prisier',
+    usuarioId: 'user-admin-001',
+    archivo: 'portafolio-congrupo-abr2026.xlsx',
     estado: 'exitoso',
+    filasNuevas: 218,
+    filasActualizadas: 0,
+    filasOmitidas: 0,
+    errores: [],
+    blobUrl: null,
+    createdAt: new Date(Date.now() - 3 * 86400_000).toISOString(),
+    finalizedAt: new Date(Date.now() - 3 * 86400_000 + 4000).toISOString(),
   },
   {
-    id: 'imp-002',
-    fecha: new Date(Date.now() - 15 * 86400_000).toISOString(),
-    archivo: 'portafolio-congrupo-v2.xlsx',
-    totalSkus: 23,
-    advertencias: 2,
-    errores: [
-      'Fila 8: Peso Profit Pool fuera de rango (1.5%) — se normalizó a 1.0%',
-      'Fila 15: Categoría "Bebidas Deportivas" no reconocida — asignada a Hidratantes',
-    ],
+    id: 'impv2-002',
+    tenantId: 'tenant-001',
+    tipo: 'categorias',
+    usuarioNombre: 'Admin Prisier',
+    usuarioId: 'user-admin-001',
+    archivo: 'categorias-congrupo-v3.xlsx',
     estado: 'con_advertencias',
+    filasNuevas: 12,
+    filasActualizadas: 45,
+    filasOmitidas: 3,
+    errores: [
+      { fila: 23, mensaje: 'EAN duplicado: 7701234567890' },
+      { fila: 47, columna: 'Nombre', mensaje: "Categoría 'Bebidas' no existe" },
+      { fila: 51, mensaje: '% pesos suma 98, debe sumar 100' },
+    ],
+    blobUrl: null,
+    createdAt: new Date(Date.now() - 2 * 86400_000).toISOString(),
+    finalizedAt: new Date(Date.now() - 2 * 86400_000 + 3000).toISOString(),
   },
   {
-    id: 'imp-003',
-    fecha: new Date(Date.now() - 3 * 86400_000).toISOString(),
-    archivo: 'portafolio-congrupo-oct2025.xlsx',
-    totalSkus: 25,
-    advertencias: 0,
-    errores: [],
+    id: 'impv2-003',
+    tenantId: 'tenant-001',
+    tipo: 'atributos',
+    usuarioNombre: 'Consultor Demo',
+    usuarioId: 'user-consultor-001',
+    archivo: 'atributos-congrupo-v1.xlsx',
+    estado: 'fallido',
+    filasNuevas: 0,
+    filasActualizadas: 0,
+    filasOmitidas: 7,
+    errores: [
+      { fila: 2, columna: 'Peso', mensaje: 'Peso fuera de rango (1.3); debe ser 0.0–1.0' },
+      { fila: 3, columna: 'Peso', mensaje: 'Peso fuera de rango (1.2); debe ser 0.0–1.0' },
+      { fila: 5, columna: 'Categoría', mensaje: "Categoría 'Bebidas Especiales' no existe" },
+      { fila: 8, columna: 'Atributo', mensaje: 'Atributo vacío' },
+      { fila: 12, columna: 'Peso', mensaje: 'Suma de pesos para Jugos = 1.05, debe ser 1.0' },
+      { fila: 15, columna: 'Peso', mensaje: 'Suma de pesos para Agua = 0.95, debe ser 1.0' },
+      { fila: 20, mensaje: 'Fila sin datos' },
+    ],
+    blobUrl: null,
+    createdAt: new Date(Date.now() - 4 * 86400_000).toISOString(),
+    finalizedAt: new Date(Date.now() - 4 * 86400_000 + 2000).toISOString(),
+  },
+  {
+    id: 'impv2-004',
+    tenantId: 'tenant-001',
+    tipo: 'competidores',
+    usuarioNombre: 'Consultor Demo',
+    usuarioId: 'user-consultor-001',
+    archivo: 'competidores-congrupo-mar2026.xlsx',
+    estado: 'con_advertencias',
+    filasNuevas: 85,
+    filasActualizadas: 32,
+    filasOmitidas: 4,
+    errores: [
+      { fila: 11, columna: 'EAN Propio', mensaje: 'EAN 7700000099999 no existe en portafolio. Fila ignorada' },
+      { fila: 24, columna: 'EAN Propio', mensaje: 'EAN 7700000088888 no existe en portafolio. Fila ignorada' },
+      { fila: 67, columna: 'Retailer', mensaje: 'Retailer vacío. Fila ignorada' },
+      { fila: 98, columna: 'EAN Competidor', mensaje: 'EAN competidor inválido. Fila ignorada' },
+    ],
+    blobUrl: null,
+    createdAt: new Date(Date.now() - 7 * 86400_000).toISOString(),
+    finalizedAt: new Date(Date.now() - 7 * 86400_000 + 5000).toISOString(),
+  },
+  {
+    id: 'impv2-005',
+    tenantId: 'tenant-001',
+    tipo: 'calificaciones',
+    usuarioNombre: 'Admin Prisier',
+    usuarioId: 'user-admin-001',
+    archivo: 'calificaciones-congrupo-v2.xlsx',
     estado: 'exitoso',
+    filasNuevas: 142,
+    filasActualizadas: 28,
+    filasOmitidas: 0,
+    errores: [],
+    blobUrl: null,
+    createdAt: new Date(Date.now() - 10 * 86400_000).toISOString(),
+    finalizedAt: new Date(Date.now() - 10 * 86400_000 + 3500).toISOString(),
+  },
+  {
+    id: 'impv2-006',
+    tenantId: 'tenant-001',
+    tipo: 'elasticidad',
+    usuarioNombre: 'Consultor Demo',
+    usuarioId: 'user-consultor-001',
+    archivo: 'elasticidad-congrupo-v1.xlsx',
+    estado: 'con_advertencias',
+    filasNuevas: 25,
+    filasActualizadas: 0,
+    filasOmitidas: 2,
+    errores: [
+      { fila: 14, columna: 'Coeficiente Elasticidad', mensaje: 'Valor 0.5 inválido: ε debe ser ≤ 0' },
+      { fila: 22, columna: 'Coeficiente Elasticidad', mensaje: 'Valor 1.2 inválido: ε debe ser ≤ 0' },
+    ],
+    blobUrl: null,
+    createdAt: new Date(Date.now() - 14 * 86400_000).toISOString(),
+    finalizedAt: new Date(Date.now() - 14 * 86400_000 + 2000).toISOString(),
+  },
+  {
+    id: 'impv2-007',
+    tenantId: 'tenant-001',
+    tipo: 'canales',
+    usuarioNombre: 'Admin Prisier',
+    usuarioId: 'user-admin-001',
+    archivo: 'canales-congrupo-feb2026.xlsx',
+    estado: 'exitoso',
+    filasNuevas: 18,
+    filasActualizadas: 6,
+    filasOmitidas: 0,
+    errores: [],
+    blobUrl: null,
+    createdAt: new Date(Date.now() - 21 * 86400_000).toISOString(),
+    finalizedAt: new Date(Date.now() - 21 * 86400_000 + 1500).toISOString(),
+  },
+  {
+    id: 'impv2-008',
+    tenantId: 'tenant-001',
+    tipo: 'portafolio',
+    usuarioNombre: 'Admin Prisier',
+    usuarioId: 'user-admin-001',
+    archivo: 'portafolio-congrupo-mar2026.xlsx',
+    estado: 'con_advertencias',
+    filasNuevas: 8,
+    filasActualizadas: 195,
+    filasOmitidas: 1,
+    errores: [
+      { fila: 77, columna: 'Peso Profit Pool', mensaje: 'Suma de pesos = 1.005, debe ser 1.0. Fila omitida.' },
+    ],
+    blobUrl: null,
+    createdAt: new Date(Date.now() - 28 * 86400_000).toISOString(),
+    finalizedAt: new Date(Date.now() - 28 * 86400_000 + 6000).toISOString(),
+  },
+  {
+    id: 'impv2-009',
+    tenantId: 'tenant-001',
+    tipo: 'competencia',
+    usuarioNombre: 'Admin Prisier',
+    usuarioId: 'user-admin-001',
+    archivo: 'competencia-skus-congrupo-abr2026.xlsx',
+    estado: 'exitoso',
+    filasNuevas: 34,
+    filasActualizadas: 0,
+    filasOmitidas: 0,
+    errores: [],
+    blobUrl: null,
+    createdAt: new Date(Date.now() - 1 * 86400_000).toISOString(),
+    finalizedAt: new Date(Date.now() - 1 * 86400_000 + 2000).toISOString(),
+  },
+  {
+    id: 'impv2-010',
+    tenantId: 'tenant-001',
+    tipo: 'competencia',
+    usuarioNombre: 'Consultor Demo',
+    usuarioId: 'user-consultor-001',
+    archivo: 'competencia-skus-congrupo-mar2026.xlsx',
+    estado: 'con_advertencias',
+    filasNuevas: 28,
+    filasActualizadas: 5,
+    filasOmitidas: 2,
+    errores: [
+      { fila: 9,  columna: 'EAN',            mensaje: 'EAN duplicado: 7750232000156. Fila omitida' },
+      { fila: 17, columna: 'Categoría',      mensaje: "Categoría 'Isotónicas' no existe en el sistema. Fila omitida" },
+    ],
+    blobUrl: null,
+    createdAt: new Date(Date.now() - 35 * 86400_000).toISOString(),
+    finalizedAt: new Date(Date.now() - 35 * 86400_000 + 3000).toISOString(),
   },
 ]
 

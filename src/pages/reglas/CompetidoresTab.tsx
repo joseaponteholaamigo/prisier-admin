@@ -1,19 +1,24 @@
 import { useState, useMemo } from 'react'
 import { useUrlParam } from '../../lib/useUrlState'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Plus, Trash2, Search, FileDown } from 'lucide-react'
+import { Plus, Trash2, Search, FileDown, Upload } from 'lucide-react'
 import api from '../../lib/api'
 import { downloadTemplate } from '../../lib/downloadTemplate'
 import type { PortafolioData, PortafolioItem, SkuCompetencia, SkuVinculacion, VinculacionesMapeo } from '../../lib/types'
 import Spinner from '../../components/Spinner'
 import QueryErrorState from '../../components/QueryErrorState'
 import { useToast } from '../../components/useToast'
+import { useAuth } from '../../lib/auth'
+import UploadPlantillaModal from '../../components/UploadPlantillaModal'
 
 // ─── CompetidoresTab (vinculación SKU propio → SKUs competidores) ─────────────
 
 function CompetidoresTab({ tenantId }: { tenantId: string }) {
   const queryClient = useQueryClient()
   const toast = useToast()
+  const { user } = useAuth()
+  const isAdmin = user?.rol === 'admin'
+  const [uploadOpen, setUploadOpen] = useState(false)
 
   const { data: portafolioData, isLoading: loadingPortafolio } = useQuery<PortafolioData | null>({
     queryKey: ['reglas-portafolio', tenantId],
@@ -116,25 +121,37 @@ function CompetidoresTab({ tenantId }: { tenantId: string }) {
         <p className="text-sm text-p-gray flex-1">
           Vincula cada SKU propio con los SKUs (propios o de competencia) contra los que se compara en el análisis de precios.
         </p>
-        <button
-          onClick={() => downloadTemplate(
-            'competidores.xlsx',
-            'Competidores',
-            ['EAN Propio', 'EAN Competidor', 'Marca Competidor', 'Retailer', 'País', 'Es Principal'],
-            {
-              'EAN Propio': '7702001234567',
-              'EAN Competidor': '7750232000156',
-              'Marca Competidor': 'Pepsi',
-              'Retailer': 'Éxito',
-              'País': 'Colombia',
-              'Es Principal': 'Si',
-            },
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <button
+            onClick={() => downloadTemplate(
+              'competidores.xlsx',
+              'Competidores',
+              ['EAN Propio', 'EAN Competidor', 'Tipo Competidor', 'Marca Competidor', 'Retailer', 'País', 'Es Principal'],
+              {
+                'EAN Propio': '7702001234567',
+                'EAN Competidor': '7750232000156',
+                'Tipo Competidor': 'competencia',
+                'Marca Competidor': 'Pepsi',
+                'Retailer': 'Éxito',
+                'País': 'Colombia',
+                'Es Principal': 'Si',
+              },
+            )}
+            aria-label="Descargar plantilla de competidores"
+            className="btn-secondary text-xs flex items-center gap-1 py-1.5"
+          >
+            <FileDown size={13} aria-hidden /> Descargar plantilla
+          </button>
+          {isAdmin && (
+            <button
+              onClick={() => setUploadOpen(true)}
+              aria-label="Subir plantilla de competidores"
+              className="btn-secondary text-xs flex items-center gap-1 py-1.5"
+            >
+              <Upload size={13} aria-hidden /> Subir plantilla
+            </button>
           )}
-          aria-label="Descargar plantilla de competidores"
-          className="btn-secondary text-xs flex items-center gap-1 py-1.5 flex-shrink-0"
-        >
-          <FileDown size={13} aria-hidden /> Descargar plantilla
-        </button>
+        </div>
       </div>
 
       <div className="flex flex-col md:flex-row gap-4 items-start">
@@ -280,6 +297,18 @@ function CompetidoresTab({ tenantId }: { tenantId: string }) {
         )}
       </div>
 
+      {isAdmin && (
+        <UploadPlantillaModal
+          tipo="competidores"
+          tenantId={tenantId}
+          isOpen={uploadOpen}
+          onClose={() => setUploadOpen(false)}
+          onConfirmed={() => {
+            setUploadOpen(false)
+            queryClient.invalidateQueries({ queryKey: ['reglas-vinculaciones', tenantId] })
+          }}
+        />
+      )}
     </div>
   )
 }
