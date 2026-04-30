@@ -1,7 +1,9 @@
-import { useState, lazy, Suspense, useRef, useCallback, useEffect } from 'react'
+import { useState, lazy, Suspense, useRef, useCallback, useEffect, useMemo } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import api from '../lib/api'
+import { useAuth } from '../lib/auth'
+import { isStaff } from '../lib/permissions'
 import type { TenantListItem, CategoriaConfig, PortafolioData } from '../lib/types'
 import Spinner from '../components/Spinner'
 
@@ -21,16 +23,16 @@ const RetailersTab     = lazy(() => import('./reglas/RetailersTab'))
 // ─── Tab config ───────────────────────────────────────────────────────────────
 
 const TABS = [
-  { id: 'portafolio',     label: 'Portafolio' },
-  { id: 'categorias',     label: 'Categorías' },
-  { id: 'competidores',   label: 'Competidores' },
-  { id: 'atributos',      label: 'Atributos' },
-  { id: 'calificaciones', label: 'Calificaciones' },
-  { id: 'elasticidad',    label: 'Elasticidad' },
-  { id: 'canales',        label: 'Canales' },
-  { id: 'umbrales',       label: 'Umbrales' },
-  { id: 'retailers',      label: 'Retailers' },
-  { id: 'importaciones',  label: 'Importaciones' },
+  { id: 'portafolio',     label: 'Portafolio',     staffOnly: false },
+  { id: 'categorias',     label: 'Categorías',     staffOnly: false },
+  { id: 'competidores',   label: 'Competidores',   staffOnly: false },
+  { id: 'atributos',      label: 'Atributos',      staffOnly: true  },
+  { id: 'calificaciones', label: 'Calificaciones', staffOnly: false },
+  { id: 'elasticidad',    label: 'Elasticidad',    staffOnly: true  },
+  { id: 'canales',        label: 'Canales',        staffOnly: false },
+  { id: 'umbrales',       label: 'Umbrales',       staffOnly: false },
+  { id: 'retailers',      label: 'Retailers',      staffOnly: false },
+  { id: 'importaciones',  label: 'Importaciones',  staffOnly: false },
 ] as const
 
 type TabId = typeof TABS[number]['id']
@@ -100,12 +102,22 @@ function computeTabDisabled(
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export default function ReglesPage() {
+  const { user } = useAuth()
+  const userIsStaff = isStaff(user?.rol)
   const [tenantId, setTenantId] = useState('')
   const [searchParams, setSearchParams] = useSearchParams()
   const tabRefs = useRef<(HTMLButtonElement | null)[]>([])
 
+  const visibleTabs = useMemo(
+    () => TABS.filter(t => !t.staffOnly || userIsStaff),
+    [userIsStaff],
+  )
+  const visibleIds = useMemo(() => new Set(visibleTabs.map(t => t.id)), [visibleTabs])
+
   const rawTab = searchParams.get('tab') ?? ''
-  const tab: TabId = VALID_TABS.has(rawTab) ? (rawTab as TabId) : DEFAULT_TAB
+  const tab: TabId = VALID_TABS.has(rawTab) && visibleIds.has(rawTab as TabId)
+    ? (rawTab as TabId)
+    : DEFAULT_TAB
 
   // ─── Queries de tenants y dependencias ───────────────────────────────────────
 
@@ -180,7 +192,14 @@ export default function ReglesPage() {
     }
   }, [tab, tabDisabledMap, activeTenantId, depsReady, setSearchParams])
 
-  const activeIndex = TABS.findIndex(t => t.id === tab)
+  // Limpiar URL si el `?tab=` solicitado no es visible para el rol actual
+  useEffect(() => {
+    if (rawTab && !visibleIds.has(rawTab as TabId)) {
+      setSearchParams({}, { replace: true })
+    }
+  }, [rawTab, visibleIds, setSearchParams])
+
+  const activeIndex = visibleTabs.findIndex(t => t.id === tab)
 
   const setTab = (id: TabId) => {
     const info = tabDisabledMap(id)
@@ -201,8 +220,8 @@ export default function ReglesPage() {
     if (e.key === 'Home' || e.key === 'End') {
       e.preventDefault()
       const candidates = e.key === 'Home'
-        ? TABS.map((t, i) => ({ t, i }))
-        : [...TABS.map((t, i) => ({ t, i }))].reverse()
+        ? visibleTabs.map((t, i) => ({ t, i }))
+        : [...visibleTabs.map((t, i) => ({ t, i }))].reverse()
       const target = candidates.find(({ t }) => !tabDisabledMap(t.id).isDisabled)
       if (target) {
         setTab(target.t.id)
@@ -215,14 +234,14 @@ export default function ReglesPage() {
     e.preventDefault()
 
     let nextIndex = activeIndex
-    const maxTries = TABS.length
+    const maxTries = visibleTabs.length
     for (let tries = 0; tries < maxTries; tries++) {
-      nextIndex = (nextIndex + direction + TABS.length) % TABS.length
-      if (!tabDisabledMap(TABS[nextIndex].id).isDisabled) break
+      nextIndex = (nextIndex + direction + visibleTabs.length) % visibleTabs.length
+      if (!tabDisabledMap(visibleTabs[nextIndex].id).isDisabled) break
     }
-    setTab(TABS[nextIndex].id)
+    setTab(visibleTabs[nextIndex].id)
     tabRefs.current[nextIndex]?.focus()
-  }, [activeIndex, tabDisabledMap]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [activeIndex, tabDisabledMap, visibleTabs]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const panelId = `tabpanel-${tab}`
 
@@ -252,7 +271,7 @@ export default function ReglesPage() {
         aria-label="Secciones de reglas"
         className="flex gap-1 overflow-x-auto border-b border-p-border mb-6 pb-px scrollbar-thin scrollbar-track-transparent scrollbar-thumb-p-border"
       >
-        {TABS.map((t, i) => {
+        {visibleTabs.map((t, i) => {
           const isActive = tab === t.id
           const { isDisabled, tooltip } = tabDisabledMap(t.id)
           return (

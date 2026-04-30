@@ -17,6 +17,7 @@ import SearchableSelect from '../../components/SearchableSelect'
 import { makeCanalMargenSchema } from '../../schemas/reglas'
 import { useFocusTrap } from '../../lib/useFocusTrap'
 import { useAuth } from '../../lib/auth'
+import { isAdmin as checkIsAdmin } from '../../lib/permissions'
 import UploadPlantillaModal from '../../components/UploadPlantillaModal'
 
 // ─── CanalMargenModal ────────────────────────────────────────────────────────
@@ -169,7 +170,7 @@ function CanalesTab({ tenantId }: { tenantId: string }) {
   const queryClient = useQueryClient()
   const toast = useToast()
   const { user } = useAuth()
-  const isAdmin = user?.rol === 'admin'
+  const isAdmin = checkIsAdmin(user?.rol)
   const [uploadOpen, setUploadOpen] = useState(false)
   const [modal, setModal] = useState<{ mode: 'add' } | { mode: 'edit'; idx: number } | null>(null)
   const [confirmDelete, setConfirmDelete] = useState<{ nombre: string; idx: number } | null>(null)

@@ -12,6 +12,7 @@ import SearchableSelect from '../../components/SearchableSelect'
 import { useToast } from '../../components/useToast'
 import { atributosSchema } from '../../schemas/reglas'
 import { useAuth } from '../../lib/auth'
+import { isAdmin as checkIsAdmin } from '../../lib/permissions'
 import UploadPlantillaModal from '../../components/UploadPlantillaModal'
 
 // ─── AtributosTab (R-002 — parte a: atributos + pesos) ───────────────────────
@@ -20,7 +21,7 @@ function AtributosTab({ tenantId }: { tenantId: string }) {
   const queryClient = useQueryClient()
   const toast = useToast()
   const { user } = useAuth()
-  const isAdmin = user?.rol === 'admin'
+  const isAdmin = checkIsAdmin(user?.rol)
   const [uploadOpen, setUploadOpen] = useState(false)
 
   const { data = [], isLoading, isError, refetch } = useQuery<CategoriaAtributos[]>({

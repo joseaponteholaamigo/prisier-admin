@@ -15,6 +15,7 @@ import { useToast } from '../../components/useToast'
 import { makeCategoriaSchema } from '../../schemas/reglas'
 import { useFocusTrap } from '../../lib/useFocusTrap'
 import { useAuth } from '../../lib/auth'
+import { isAdmin as checkIsAdmin } from '../../lib/permissions'
 import UploadPlantillaModal from '../../components/UploadPlantillaModal'
 
 // ─── CategoriasTab ────────────────────────────────────────────────────────────
@@ -153,7 +154,7 @@ function CategoriasTab({ tenantId }: { tenantId: string }) {
   const queryClient = useQueryClient()
   const toast = useToast()
   const { user } = useAuth()
-  const isAdmin = user?.rol === 'admin'
+  const isAdmin = checkIsAdmin(user?.rol)
   const [uploadOpen, setUploadOpen] = useState(false)
   const [modal, setModal] = useState<{ mode: 'add' | 'edit'; item?: CategoriaConfig } | null>(null)
   const [confirmDelete, setConfirmDelete] = useState<CategoriaConfig | null>(null)

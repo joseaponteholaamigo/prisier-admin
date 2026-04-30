@@ -15,6 +15,7 @@ import SoloPrisierBadge from '../../components/SoloPrisierBadge'
 import { makeRetailerSchema } from '../../schemas/reglas'
 import { useFocusTrap } from '../../lib/useFocusTrap'
 import { useAuth } from '../../lib/auth'
+import { isAdmin as checkIsAdmin } from '../../lib/permissions'
 
 // ─── RetailerModal ────────────────────────────────────────────────────────────
 
@@ -132,7 +133,7 @@ function RetailersTab({ tenantId }: { tenantId: string }) {
   const queryClient = useQueryClient()
   const toast = useToast()
   const { user } = useAuth()
-  const isAdmin = user?.rol === 'admin'
+  const isAdmin = checkIsAdmin(user?.rol)
   const [modal, setModal] = useState<{ mode: 'add' | 'edit'; item?: RetailerItem } | null>(null)
   const [confirmDelete, setConfirmDelete] = useState<RetailerItem | null>(null)
   const [page, setPage] = useUrlNumber('page', 1)

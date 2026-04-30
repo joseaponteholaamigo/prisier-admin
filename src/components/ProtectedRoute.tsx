@@ -2,6 +2,7 @@
 // (prisier-admin ↔ prisier-client). Replica los cambios y corre scripts/check-parity.sh.
 import { Navigate, Outlet } from 'react-router-dom'
 import { useAuth } from '../lib/auth'
+import { isClienteEditor } from '../lib/permissions'
 
 interface Props {
   allowedRoles?: string[]
@@ -21,7 +22,8 @@ export default function ProtectedRoute({ allowedRoles }: Props) {
   if (!user) return <Navigate to="/login" replace />
 
   if (allowedRoles && !allowedRoles.includes(user.rol)) {
-    return <Navigate to="/" replace />
+    const fallback = isClienteEditor(user.rol) ? '/reglas' : '/'
+    return <Navigate to={fallback} replace />
   }
 
   return <Outlet />

@@ -10,6 +10,7 @@ import QueryErrorState from '../../components/QueryErrorState'
 import { useToast } from '../../components/useToast'
 import { calificacionesSchema } from '../../schemas/reglas'
 import { useAuth } from '../../lib/auth'
+import { isAdmin as checkIsAdmin } from '../../lib/permissions'
 import UploadPlantillaModal from '../../components/UploadPlantillaModal'
 
 // ─── CalificacionesTab (R-002/R-003 — parte b: SKU × atributo) ───────────────
@@ -18,7 +19,7 @@ function CalificacionesTab({ tenantId }: { tenantId: string }) {
   const queryClient = useQueryClient()
   const toast = useToast()
   const { user } = useAuth()
-  const isAdmin = user?.rol === 'admin'
+  const isAdmin = checkIsAdmin(user?.rol)
   const [uploadOpen, setUploadOpen] = useState(false)
   const [filterCat, setFilterCat] = useUrlParam('cat')
   const [searchPropios, setSearchPropios] = useUrlParam('q')

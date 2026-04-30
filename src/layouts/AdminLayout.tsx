@@ -1,20 +1,22 @@
 import { Outlet, NavLink, useLocation } from 'react-router-dom'
 import { LayoutDashboard, Users, Building2, Settings, FileText, LogOut, Search, Database } from 'lucide-react'
 import { useAuth } from '../lib/auth'
+import { isStaff } from '../lib/permissions'
 
 const navItems = [
-  { label: 'Dashboard', icon: LayoutDashboard, path: '/' },
-  { label: 'Tenants', icon: Building2, path: '/tenants' },
-  { label: 'Usuarios', icon: Users, path: '/usuarios' },
-  { label: 'Reglas', icon: Settings, path: '/reglas' },
-  { label: 'Scraper', icon: Database, path: '/scraper' },
-  { label: 'Auditoría', icon: FileText, path: '/auditoria' },
+  { label: 'Dashboard', icon: LayoutDashboard, path: '/', staffOnly: true },
+  { label: 'Tenants', icon: Building2, path: '/tenants', staffOnly: true },
+  { label: 'Usuarios', icon: Users, path: '/usuarios', staffOnly: true },
+  { label: 'Reglas', icon: Settings, path: '/reglas', staffOnly: false },
+  { label: 'Scraper', icon: Database, path: '/scraper', staffOnly: false },
+  { label: 'Auditoría', icon: FileText, path: '/auditoria', staffOnly: true },
 ]
 
 export default function AdminLayout() {
   const { user, logout } = useAuth()
   const location = useLocation()
-  const currentPage = navItems.find(i => i.path === location.pathname)
+  const visibleItems = navItems.filter(i => !i.staffOnly || isStaff(user?.rol))
+  const currentPage = visibleItems.find(i => i.path === location.pathname)
 
   return (
     <div className="flex h-screen bg-p-bg">
@@ -37,7 +39,7 @@ export default function AdminLayout() {
 
         {/* Navigation */}
         <nav className="flex-1 px-3 space-y-0.5">
-          {navItems.map((item) => (
+          {visibleItems.map((item) => (
             <NavLink
               key={item.path}
               to={item.path}

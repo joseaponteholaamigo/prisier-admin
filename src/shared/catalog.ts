@@ -75,12 +75,16 @@ export const INDUSTRIAS: CatalogOption[] = [
   { value: 'moda',            label: 'Moda' },
 ]
 
-// ─── Roles del sistema (D1 — rol único `cliente` para tenant users) ─────────
+// ─── Roles del sistema ──────────────────────────────────────────────────────
+// 2026-04-29: rol `cliente` se desdobla en `cliente_editor` (puede entrar al
+// admin SPA, tabs limitadas) y `cliente_visualizador` (solo SPA cliente).
+// Migración: usuarios con rol `cliente` pasan a `cliente_visualizador`.
 
 export const ROLES: CatalogOption[] = [
-  { value: 'admin',             label: 'Admin' },
-  { value: 'consultor_prisier', label: 'Consultor Prisier' },
-  { value: 'cliente',           label: 'Cliente' },
+  { value: 'admin',                label: 'Admin' },
+  { value: 'consultor_prisier',    label: 'Consultor Prisier' },
+  { value: 'cliente_editor',       label: 'Cliente — Editor' },
+  { value: 'cliente_visualizador', label: 'Cliente — Visualizador' },
 ]
 
 // ─── Planes de suscripción ──────────────────────────────────────────────────

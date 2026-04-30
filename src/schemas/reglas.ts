@@ -25,7 +25,7 @@ export const nombreSkuSchema = z
  *
  * Validaciones cruzadas vía superRefine:
  *  - EAN único contra existingEans
- *  - Si variant === 'propios': pvp > 0, costo > 0, costo < pvp, peso 0..100
+ *  - Si variant === 'propios': pvp > 0, costo > 0, costo < pvp
  */
 export function makeSkuSchema(opts: {
   variant: 'propios' | 'competencia'
@@ -41,7 +41,6 @@ export function makeSkuSchema(opts: {
       categoria: z.string(),
       pvpSugerido: z.string(),
       costoVariable: z.string(),
-      pesoProfitPool: z.string(),
     })
     .superRefine((data, ctx) => {
       // ── EAN ────────────────────────────────────────────────────────────────
@@ -88,7 +87,6 @@ export function makeSkuSchema(opts: {
       if (variant === 'propios') {
         const pvp = parseFloat(data.pvpSugerido)
         const costo = parseFloat(data.costoVariable)
-        const peso = parseFloat(data.pesoProfitPool)
 
         if (!data.pvpSugerido || isNaN(pvp) || pvp <= 0) {
           ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['pvpSugerido'], message: 'Debe ser mayor a 0' })
@@ -101,14 +99,6 @@ export function makeSkuSchema(opts: {
             code: z.ZodIssueCode.custom,
             path: ['costoVariable'],
             message: 'Debe ser menor al PVP Sugerido',
-          })
-        }
-
-        if (data.pesoProfitPool === '' || isNaN(peso) || peso < 0 || peso > 100) {
-          ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            path: ['pesoProfitPool'],
-            message: 'Debe estar entre 0 y 100',
           })
         }
       }

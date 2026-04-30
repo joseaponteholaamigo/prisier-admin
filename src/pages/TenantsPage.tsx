@@ -3,6 +3,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Plus, Pencil, UserPlus, X, PowerOff } from 'lucide-react'
 import { useForm } from 'react-hook-form'
 import api from '../lib/api'
+import { useAuth } from '../lib/auth'
+import { isAdmin as checkIsAdmin } from '../lib/permissions'
 import type { TenantListItem, ConsultorInfo, UserListItem } from '../lib/types'
 import { INDUSTRIAS, PLANES, ESTADOS_TENANT } from '../shared/catalog'
 
@@ -20,6 +22,8 @@ interface TenantForm {
 
 export default function TenantsPage() {
   const queryClient = useQueryClient()
+  const { user: currentUser } = useAuth()
+  const isAdmin = checkIsAdmin(currentUser?.rol)
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [assignTenantId, setAssignTenantId] = useState<string | null>(null)
@@ -106,9 +110,11 @@ export default function TenantsPage() {
     <div>
       <div className="flex items-center justify-between mb-6">
         <div />
-        <button onClick={openCreate} className="btn-primary">
-          <Plus size={18} /> Nuevo Tenant
-        </button>
+        {isAdmin && (
+          <button onClick={openCreate} className="btn-primary">
+            <Plus size={18} /> Nuevo Tenant
+          </button>
+        )}
       </div>
 
       {/* Form Modal */}

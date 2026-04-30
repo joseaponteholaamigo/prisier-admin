@@ -3,7 +3,7 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useUrlParam, useUrlNumber } from '../../lib/useUrlState'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Plus, Trash2, Pencil, X, AlertTriangle, CheckCircle } from 'lucide-react'
+import { Plus, Trash2, Pencil, X } from 'lucide-react'
 import api from '../../lib/api'
 import type { CategoriaConfig, PortafolioData, PortafolioItem } from '../../lib/types'
 import ConfirmModal from '../../components/ConfirmModal'
@@ -28,7 +28,6 @@ interface SkuFormValues {
   categoria: string
   pvpSugerido: string
   costoVariable: string
-  pesoProfitPool: string
 }
 
 interface CategoriaFormValues {
@@ -168,7 +167,6 @@ export function SkuModal({
   initial,
   existingEans,
   categorias,
-  totalPesoActual,
   tenantId,
   onSave,
   onClose,
@@ -178,7 +176,6 @@ export function SkuModal({
   initial?: Partial<SkuFormValues>
   existingEans: string[]
   categorias: string[]
-  totalPesoActual?: number  // 0-100, para la advertencia de suma
   tenantId: string
   onSave: (values: SkuFormValues) => void
   onClose: () => void
@@ -200,13 +197,11 @@ export function SkuModal({
     categoria: initial?.categoria ?? categorias[0] ?? '',
     pvpSugerido: initial?.pvpSugerido ?? '',
     costoVariable: initial?.costoVariable ?? '',
-    pesoProfitPool: initial?.pesoProfitPool ?? '',
   }
 
   const {
     register,
     handleSubmit,
-    watch,
     setValue,
     formState: { errors, isSubmitting, touchedFields, isSubmitted },
   } = useForm<SkuFormValues>({
@@ -216,7 +211,6 @@ export function SkuModal({
     reValidateMode: 'onChange',
   })
 
-  // Muestra el error solo si el campo fue tocado o se intentó enviar
   const showErr = (field: keyof SkuFormValues) => {
     const touched = touchedFields[field] || isSubmitted
     const msg = errors[field]?.message
@@ -227,23 +221,6 @@ export function SkuModal({
       </p>
     )
   }
-
-  const pesoProfitPoolValue = watch('pesoProfitPool')
-
-  const { pesoWarning, isWeightBlocking } = useMemo(() => {
-    if (variant !== 'propios' || totalPesoActual === undefined) return { pesoWarning: null, isWeightBlocking: false }
-    const nuevoPeso = parseFloat(pesoProfitPoolValue)
-    if (isNaN(nuevoPeso)) return { pesoWarning: null, isWeightBlocking: false }
-    const currentWeight = mode === 'edit' ? totalPesoActual - parseFloat(initial?.pesoProfitPool ?? '0') : totalPesoActual
-    const sum = currentWeight + nuevoPeso
-    if (Math.abs(sum - 100) <= 0.01) return { pesoWarning: null, isWeightBlocking: false }
-    const diff = Math.abs(sum - 100)
-    const blocking = diff > 5
-    return {
-      pesoWarning: `La suma de pesos quedaría en ${sum.toFixed(2)}% (se espera 100%)`,
-      isWeightBlocking: blocking,
-    }
-  }, [variant, totalPesoActual, pesoProfitPoolValue, mode, initial?.pesoProfitPool])
 
   const dialogRef = useRef<HTMLDivElement>(null)
   const titleId = useId()
@@ -422,27 +399,6 @@ export function SkuModal({
                     </div>
                   </div>
 
-                  <div>
-                    <label htmlFor="sku-peso" className="form-label">Peso Profit Pool (%)</label>
-                    <input
-                      id="sku-peso"
-                      type="number"
-                      min={0}
-                      max={100}
-                      step={0.01}
-                      {...register('pesoProfitPool')}
-                      aria-invalid={!!(touchedFields.pesoProfitPool || isSubmitted) && !!errors.pesoProfitPool}
-                      aria-describedby={errors.pesoProfitPool ? 'pesoProfitPool-error' : undefined}
-                      className="form-input w-full"
-                      placeholder="0"
-                    />
-                    {showErr('pesoProfitPool')}
-                    {!errors.pesoProfitPool && pesoWarning && (
-                      <p className="text-xs text-amber-500 mt-0.5 flex items-center gap-1" role="alert">
-                        <AlertTriangle size={11} aria-hidden /> {pesoWarning}
-                      </p>
-                    )}
-                  </div>
                 </>
               )}
             </div>
@@ -451,8 +407,7 @@ export function SkuModal({
               <button type="button" onClick={onClose} className="btn-secondary w-full sm:w-auto">Cancelar</button>
               <button
                 type="submit"
-                disabled={isSubmitting || isWeightBlocking}
-                title={isWeightBlocking ? 'El peso profit pool total está fuera del rango aceptable (95–105%)' : undefined}
+                disabled={isSubmitting}
                 className="btn-primary w-full sm:w-auto disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 {mode === 'add' ? 'Agregar' : 'Guardar cambios'}
@@ -506,20 +461,6 @@ function PropiosTab({ tenantId }: { tenantId: string }) {
     return Array.from(new Set([...fromConfig, ...fromItems])).sort()
   }, [categoriasConfig, items])
 
-  const totalPeso = useMemo(() =>
-    items.reduce((sum, i) => sum + i.pesoProfitPool * 100, 0),
-    [items],
-  )
-
-  // Semáforo para el badge de Profit Pool
-  const profitPoolStatus = useMemo(() => {
-    if (items.length === 0) return null
-    const diff = Math.abs(totalPeso - 100)
-    if (diff <= 0.01) return 'green' as const
-    if (diff <= 5) return 'yellow' as const
-    return 'red' as const
-  }, [totalPeso, items.length])
-
   const filteredItems = useMemo(() => {
     const q = filterSku.toLowerCase()
     return items.filter(item => {
@@ -558,7 +499,7 @@ function PropiosTab({ tenantId }: { tenantId: string }) {
         categoria: vals.categoria,
         pvpSugerido: parseFloat(vals.pvpSugerido),
         costoVariable: parseFloat(vals.costoVariable),
-        pesoProfitPool: parseFloat(vals.pesoProfitPool) / 100,
+        pesoProfitPool: 0,
       }
       newItems = [...items, next]
       setPage(Math.max(1, Math.ceil(newItems.length / PAGE_SIZE)))
@@ -572,7 +513,6 @@ function PropiosTab({ tenantId }: { tenantId: string }) {
             categoria: vals.categoria,
             pvpSugerido: parseFloat(vals.pvpSugerido),
             costoVariable: parseFloat(vals.costoVariable),
-            pesoProfitPool: parseFloat(vals.pesoProfitPool) / 100,
           }
         : i,
       )
@@ -605,25 +545,6 @@ function PropiosTab({ tenantId }: { tenantId: string }) {
             filterSku={filterSku}
             onChange={(cat, sku) => { setFilterCategoria(cat); setFilterSku(sku); setPage(1) }}
           />
-
-          {/* Badge persistente de Profit Pool */}
-          {profitPoolStatus !== null && (
-            <span
-              className={`badge flex items-center gap-1 ${
-                profitPoolStatus === 'green'
-                  ? 'badge-green'
-                  : profitPoolStatus === 'yellow'
-                    ? 'badge-yellow'
-                    : 'badge-red'
-              }`}
-              aria-label={`Peso Profit Pool total: ${totalPeso.toFixed(2)}%`}
-            >
-              {profitPoolStatus === 'green'
-                ? <CheckCircle size={11} aria-hidden />
-                : <AlertTriangle size={11} aria-hidden />}
-              Profit Pool: {totalPeso.toFixed(2)}%
-            </span>
-          )}
 
           <button
             onClick={() => setModal({ mode: 'add' })}
@@ -700,20 +621,6 @@ function PropiosTab({ tenantId }: { tenantId: string }) {
           </table>
         </div>
 
-        {/* Aviso de Profit Pool debajo de la tabla cuando hay desviación */}
-        {profitPoolStatus !== null && profitPoolStatus !== 'green' && (
-          <p
-            className={`text-xs flex items-center gap-1 mt-3 pt-3 border-t border-p-border ${
-              profitPoolStatus === 'yellow' ? 'text-amber-600' : 'text-p-red'
-            }`}
-            role="status"
-            aria-live="polite"
-          >
-            <AlertTriangle size={12} aria-hidden />
-            Peso Profit Pool total: {totalPeso.toFixed(2)}% — debería sumar 100%
-          </p>
-        )}
-
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mt-3 pt-3 border-t border-p-border">
           <span className="text-sm text-p-muted">
             {safePage} / {totalPages} — {filteredItems.length} producto{filteredItems.length !== 1 ? 's' : ''}
@@ -758,12 +665,10 @@ function PropiosTab({ tenantId }: { tenantId: string }) {
                 categoria: modal.item.categoria,
                 pvpSugerido: String(modal.item.pvpSugerido),
                 costoVariable: String(modal.item.costoVariable),
-                pesoProfitPool: String(modal.item.pesoProfitPool * 100),
               }
             : undefined}
           existingEans={existingEansForModal}
           categorias={categorias}
-          totalPesoActual={totalPeso}
           tenantId={tenantId}
           onSave={handleSave}
           onClose={() => setModal(null)}

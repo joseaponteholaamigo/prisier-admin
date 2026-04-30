@@ -24,8 +24,8 @@ function handleAuth(method: string, path: string, body: unknown) {
     const { email, password } = body as { email: string; password: string }
     const user = SEED_USERS.find(u => u.email === email && u.password === password)
     if (!user) return Promise.reject({ response: { status: 401, data: { message: 'Credenciales inválidas' } } })
-    // admin y consultor pueden entrar al admin portal
-    if (user.rol !== 'admin' && user.rol !== 'consultor_prisier') {
+    // admin, consultor y cliente_editor pueden entrar al admin portal
+    if (user.rol !== 'admin' && user.rol !== 'consultor_prisier' && user.rol !== 'cliente_editor') {
       return Promise.reject({ response: { status: 403, data: { message: 'Acceso no autorizado' } } })
     }
     const token = `mock_${user.id}`

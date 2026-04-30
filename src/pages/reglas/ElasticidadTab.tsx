@@ -11,6 +11,7 @@ import SoloPrisierBadge from '../../components/SoloPrisierBadge'
 import { useToast } from '../../components/useToast'
 import { elasticidadItemSchema } from '../../schemas/reglas'
 import { useAuth } from '../../lib/auth'
+import { isAdmin as checkIsAdmin } from '../../lib/permissions'
 import UploadPlantillaModal from '../../components/UploadPlantillaModal'
 
 // ─── ElasticidadTab (R-004) ───────────────────────────────────────────────────
@@ -19,7 +20,7 @@ function ElasticidadTab({ tenantId }: { tenantId: string }) {
   const queryClient = useQueryClient()
   const toast = useToast()
   const { user } = useAuth()
-  const isAdmin = user?.rol === 'admin'
+  const isAdmin = checkIsAdmin(user?.rol)
   const [uploadOpen, setUploadOpen] = useState(false)
 
   const { data = [], isLoading, isError, refetch } = useQuery<ElasticidadItem[]>({

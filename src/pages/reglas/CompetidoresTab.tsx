@@ -9,6 +9,7 @@ import Spinner from '../../components/Spinner'
 import QueryErrorState from '../../components/QueryErrorState'
 import { useToast } from '../../components/useToast'
 import { useAuth } from '../../lib/auth'
+import { isAdmin as checkIsAdmin } from '../../lib/permissions'
 import UploadPlantillaModal from '../../components/UploadPlantillaModal'
 
 // ─── CompetidoresTab (vinculación SKU propio → SKUs competidores) ─────────────
@@ -17,7 +18,7 @@ function CompetidoresTab({ tenantId }: { tenantId: string }) {
   const queryClient = useQueryClient()
   const toast = useToast()
   const { user } = useAuth()
-  const isAdmin = user?.rol === 'admin'
+  const isAdmin = checkIsAdmin(user?.rol)
   const [uploadOpen, setUploadOpen] = useState(false)
 
   const { data: portafolioData, isLoading: loadingPortafolio } = useQuery<PortafolioData | null>({

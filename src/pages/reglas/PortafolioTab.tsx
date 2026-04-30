@@ -6,6 +6,7 @@ import { FileDown, Upload } from 'lucide-react'
 import { downloadTemplate } from '../../lib/downloadTemplate'
 import { useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '../../lib/auth'
+import { isAdmin as checkIsAdmin } from '../../lib/permissions'
 import UploadPlantillaModal from '../../components/UploadPlantillaModal'
 
 const SUB_TABS = ['propios', 'competencia'] as const
@@ -14,7 +15,7 @@ type SubTab = typeof SUB_TABS[number]
 function PortafolioTab({ tenantId }: { tenantId: string }) {
   const queryClient = useQueryClient()
   const { user } = useAuth()
-  const isAdmin = user?.rol === 'admin'
+  const isAdmin = checkIsAdmin(user?.rol)
   const [uploadOpen, setUploadOpen] = useState(false)
 
   const [rawSub, setSubTab] = useUrlParam('sub', 'propios')

@@ -24,14 +24,16 @@ function App() {
         <AuthProvider>
           <Routes>
             <Route path="/login" element={<LoginPage />} />
-            <Route element={<ProtectedRoute allowedRoles={['admin', 'consultor_prisier']} />}>
+            <Route element={<ProtectedRoute allowedRoles={['admin', 'consultor_prisier', 'cliente_editor']} />}>
               <Route element={<AdminLayout />}>
-                <Route path="/" element={<DashboardPage />} />
-                <Route path="/tenants" element={<TenantsPage />} />
-                <Route path="/usuarios" element={<UsersPage />} />
+                <Route element={<ProtectedRoute allowedRoles={['admin', 'consultor_prisier']} />}>
+                  <Route path="/" element={<DashboardPage />} />
+                  <Route path="/tenants" element={<TenantsPage />} />
+                  <Route path="/usuarios" element={<UsersPage />} />
+                  <Route path="/auditoria" element={<AuditLogsPage />} />
+                </Route>
                 <Route path="/reglas" element={<ReglesPage />} />
                 <Route path="/scraper" element={<MonitoreoScraperPage />} />
-                <Route path="/auditoria" element={<AuditLogsPage />} />
               </Route>
             </Route>
           </Routes>

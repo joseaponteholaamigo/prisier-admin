@@ -4,6 +4,7 @@ import { Plus, Pencil, X } from 'lucide-react'
 import { useForm } from 'react-hook-form'
 import api from '../lib/api'
 import { useAuth } from '../lib/auth'
+import { isAdmin as checkIsAdmin, isCliente } from '../lib/permissions'
 import type { UserListItem, TenantListItem } from '../lib/types'
 import { ROLES, labelOf } from '../shared/catalog'
 
@@ -19,7 +20,7 @@ interface UserForm {
 export default function UsersPage() {
   const queryClient = useQueryClient()
   const { user: currentUser } = useAuth()
-  const isAdmin = currentUser?.rol === 'admin'
+  const isAdmin = checkIsAdmin(currentUser?.rol)
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [filterTenant, setFilterTenant] = useState('')
@@ -38,13 +39,13 @@ export default function UsersPage() {
   })
 
   const { register, handleSubmit, reset, setValue, watch } = useForm<UserForm>({
-    defaultValues: { rol: 'cliente', estado: 'activo', tenantId: '' },
+    defaultValues: { rol: 'cliente_visualizador', estado: 'activo', tenantId: '' },
   })
 
   const watchedRol = watch('rol')
 
   useEffect(() => {
-    if (watchedRol !== 'cliente') {
+    if (!isCliente(watchedRol)) {
       setValue('tenantId', '')
     }
   }, [watchedRol, setValue])
@@ -67,7 +68,7 @@ export default function UsersPage() {
 
   const openCreate = () => {
     setEditingId(null)
-    reset({ email: '', nombreCompleto: '', password: '', rol: 'cliente', tenantId: '', estado: 'activo' })
+    reset({ email: '', nombreCompleto: '', password: '', rol: 'cliente_visualizador', tenantId: '', estado: 'activo' })
     setShowForm(true)
   }
 
@@ -149,11 +150,11 @@ export default function UsersPage() {
                 <label className="form-label">Rol</label>
                 <select {...register('rol')} className="form-input">
                   {ROLES
-                    .filter(r => isAdmin || r.value === 'cliente')
+                    .filter(r => isAdmin || isCliente(r.value))
                     .map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
                 </select>
               </div>
-              {!editingId && watchedRol === 'cliente' && (
+              {!editingId && isCliente(watchedRol) && (
                 <div>
                   <label className="form-label">Tenant</label>
                   <select {...register('tenantId')} className="form-input">

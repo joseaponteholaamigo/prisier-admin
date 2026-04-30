@@ -7,6 +7,7 @@ const MOCK_MODE = import.meta.env.VITE_MOCK_MODE === 'true'
 const DEMO_USERS = [
   { label: 'Administrador', email: 'admin@prisier.com', password: '123456' },
   { label: 'Consultor Prisier', email: 'consultor@prisier.com', password: '123456' },
+  { label: 'Cliente — Editor', email: 'editor@congrupo.com', password: '123456' },
 ]
 
 export default function LoginPage() {
